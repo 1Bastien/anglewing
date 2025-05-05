@@ -1,0 +1,26 @@
+.playPauseButton {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
+.playPauseButton:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+    transform: scale(0.95);
+}
+
+.playPauseButton:active {
+    background-color: rgba(255, 255, 255, 0.35);
+    transform: scale(0.90);
+}
