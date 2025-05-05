@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import styles from "./Home.module.css";
 import Button from "../Button/Button";
 import CloseButton from "../CloseButton/CloseButton";
 import AnimationPlayer from "../AnimationPlayer/AnimationPlayer";
+import { invoke } from "@tauri-apps/api/core";
 
 interface AnimationConfig {
   id: number;
@@ -18,6 +19,7 @@ interface BackgroundConfig {
 interface Config {
   background: BackgroundConfig;
   animations: AnimationConfig[];
+  inactivity_timeout_in_minutes: number;
 }
 
 const CONFIG_CHECK_INTERVAL = 30000;
@@ -28,6 +30,7 @@ const Home: React.FC = () => {
     useState<AnimationConfig | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [lastModified, setLastModified] = useState<string | null>(null);
+  const inactivityTimerRef = useRef<number | null>(null);
 
   const loadConfig = useCallback(async () => {
     try {
@@ -56,6 +59,57 @@ const Home: React.FC = () => {
     }
   }, [lastModified]);
 
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current !== null) {
+      window.clearTimeout(inactivityTimerRef.current);
+    }
+
+    invoke("reset_inactivity_timer").catch((err: Error) => {
+      console.error("Failed to reset inactivity timer:", err);
+    });
+
+    inactivityTimerRef.current = window.setTimeout(async () => {
+      if (!selectedAnimation) {
+        try {
+          await invoke("put_system_to_sleep");
+        } catch (error) {
+          console.error("Failed to put system to sleep:", error);
+        }
+      }
+    }, (config?.inactivity_timeout_in_minutes || 10) * 60 * 1000);
+  }, [selectedAnimation]);
+
+  useEffect(() => {
+    resetInactivityTimer();
+
+    const activityEvents = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "touchstart",
+      "touchmove",
+      "click",
+    ];
+
+    const handleUserActivity = () => {
+      resetInactivityTimer();
+    };
+
+    activityEvents.forEach((eventName) => {
+      document.addEventListener(eventName, handleUserActivity);
+    });
+
+    return () => {
+      if (inactivityTimerRef.current !== null) {
+        window.clearTimeout(inactivityTimerRef.current);
+      }
+
+      activityEvents.forEach((eventName) => {
+        document.removeEventListener(eventName, handleUserActivity);
+      });
+    };
+  }, [resetInactivityTimer]);
+
   useEffect(() => {
     loadConfig();
     const intervalId = setInterval(loadConfig, CONFIG_CHECK_INTERVAL);
@@ -76,6 +130,7 @@ const Home: React.FC = () => {
 
   const closeAnimationPlayer = () => {
     setSelectedAnimation(null);
+    resetInactivityTimer();
   };
 
   return (

@@ -101,6 +101,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-log",
  "tauri-plugin-process",
+ "tokio",
 ]
 
 [[package]]
