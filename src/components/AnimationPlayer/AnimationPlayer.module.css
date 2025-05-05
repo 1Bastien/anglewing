@@ -1,0 +1,45 @@
+.playerContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    cursor: pointer;
+}
+
+.playerHeader {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+}
+
+.videoPlayer {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.controlsContainer {
+    position: absolute;
+    bottom: 10%;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 5%;
+    box-sizing: border-box;
+    z-index: 1001;
+}
+
+.leftButton {
+    margin-right: auto;
+}
+
+.rightButton {
+    margin-left: auto;
+}
