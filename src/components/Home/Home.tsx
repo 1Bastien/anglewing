@@ -4,6 +4,7 @@ import Button from "../Button/Button";
 import CloseButton from "../CloseButton/CloseButton";
 import AnimationPlayer from "../AnimationPlayer/AnimationPlayer";
 import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 interface AnimationConfig {
   id: number;
@@ -29,26 +30,56 @@ const Home: React.FC = () => {
   const [selectedAnimation, setSelectedAnimation] =
     useState<AnimationConfig | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
-  const [lastModified, setLastModified] = useState<string | null>(null);
+  const [publicPath, setPublicPath] = useState<string | null>(null);
   const inactivityTimerRef = useRef<number | null>(null);
 
-  const loadConfig = useCallback(async () => {
-    try {
-      const headResponse = await fetch("/config.json", { method: "HEAD" });
-      const newLastModified = headResponse.headers.get("Last-Modified");
+  useEffect(() => {
+    const getPublicPath = async () => {
+      try {
+        const path = await invoke<string>("get_public_folder_path");
+        setPublicPath(path);
+      } catch (error) {
+        console.error(
+          "Erreur lors de la récupération du chemin public:",
+          error
+        );
+      }
+    };
 
-      if (newLastModified === lastModified) {
+    getPublicPath();
+  }, []);
+
+  const loadConfig = useCallback(async () => {
+    if (!publicPath) {
+      return;
+    }
+
+    try {
+      const configPath = convertFileSrc(`${publicPath}/config.json`);
+
+      const response = await fetch(configPath);
+
+      if (!response.ok) {
+        throw new Error(
+          `Erreur HTTP ${response.status}: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (JSON.stringify(data) === JSON.stringify(config)) {
         return;
       }
 
-      const response = await fetch("/config.json");
-      const data = await response.json();
       setConfig(data);
-      setLastModified(newLastModified);
 
       if (data.background) {
+        const backgroundUrl = convertFileSrc(
+          `${publicPath}/backgrounds/${data.background.file}`
+        );
+
         setBackgroundStyle({
-          backgroundImage: `url(/backgrounds/${data.background.file})`,
+          backgroundImage: `url(${backgroundUrl})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -57,7 +88,7 @@ const Home: React.FC = () => {
     } catch (error) {
       console.error("Erreur lors du chargement de la configuration:", error);
     }
-  }, [lastModified]);
+  }, [publicPath, config]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current !== null) {
@@ -77,7 +108,7 @@ const Home: React.FC = () => {
         }
       }
     }, (config?.inactivity_timeout_in_minutes || 10) * 60 * 1000);
-  }, [selectedAnimation]);
+  }, [selectedAnimation, config]);
 
   useEffect(() => {
     resetInactivityTimer();
@@ -111,18 +142,25 @@ const Home: React.FC = () => {
   }, [resetInactivityTimer]);
 
   useEffect(() => {
-    loadConfig();
-    const intervalId = setInterval(loadConfig, CONFIG_CHECK_INTERVAL);
-    return () => clearInterval(intervalId);
-  }, [loadConfig]);
+    if (publicPath) {
+      loadConfig();
+      const intervalId = setInterval(loadConfig, CONFIG_CHECK_INTERVAL);
+      return () => clearInterval(intervalId);
+    }
+  }, [loadConfig, publicPath]);
 
   const handleAnimationSelect = (animationId: number) => {
-    if (config) {
+    if (config && publicPath) {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
+        const animationUrl = convertFileSrc(
+          `${publicPath}/animations/${animation.file}`
+        );
+        console.log("URL de l'animation:", animationUrl);
+
         setSelectedAnimation({
           ...animation,
-          file: `/animations/${animation.file}`,
+          file: animationUrl,
         });
       }
     }
