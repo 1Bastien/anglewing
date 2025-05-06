@@ -153,6 +153,7 @@ exit 0
   Ok(())
 }
 
+#[allow(dead_code)]
 pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
   let expected_install_dir = std::path::Path::new("/Applications/Anglewing");
   let app_in_expected_location = app_dir.starts_with(expected_install_dir);

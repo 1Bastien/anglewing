@@ -80,7 +80,7 @@ fn get_public_folder_path() -> Result<String, String> {
   let public_dir = platform::macos::get_public_folder_path(&app_dir);
   
   #[cfg(target_os = "windows")]
-  let public_dir = platform::windows::get_public_folder_path(&exe_dir, &app_dir);
+  let public_dir = platform::windows::get_public_folder_path(&app_dir);
   
   #[cfg(not(any(target_os = "macos", target_os = "windows")))]
   let public_dir = app_dir.parent()
