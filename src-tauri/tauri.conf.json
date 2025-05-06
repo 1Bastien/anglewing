@@ -33,7 +33,7 @@
     "active": true,
     "targets": "all",
     "icon": ["icons/logo.png"],
-    "resources": [],
+    "resources": ["../public/**/*"],
     "externalBin": []
   }
 }
