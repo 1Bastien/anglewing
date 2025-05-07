@@ -76,4 +76,4 @@ jobs:
         with:
           name: ${{ matrix.platform }}-bundle
           path: |
-            src-tauri/target/${{ matrix.arch }}/release/bundle
+            ./src-tauri/target/**/release/bundle
