@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+#[allow(dead_code)]
 pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(), String> {
   log::info!("Checking if installation setup is needed...");
   
