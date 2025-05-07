@@ -3,13 +3,13 @@ name: Build and Release Tauri App
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:
     strategy:
       matrix:
-        platform: [ubuntu-latest, macos-latest, windows-latest]
+        platform: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.platform }}
 
     steps:
