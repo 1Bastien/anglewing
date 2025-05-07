@@ -5,7 +5,10 @@ pub mod linux;
 pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(), String> {
   #[cfg(target_os = "windows")]
   {
-    return windows::check_and_setup_installation(app_handle);
+    // Sur Windows, on n'a plus besoin de configuration spéciale
+    // car on utilise le système de ressources de Tauri
+    log::info!("Windows: Utilisation du système de ressources de Tauri, pas de configuration spéciale nécessaire");
+    return Ok(());
   }
   
   #[cfg(target_os = "macos")]

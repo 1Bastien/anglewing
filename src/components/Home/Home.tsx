@@ -78,6 +78,17 @@ const Home: React.FC = () => {
     const getPublicPath = async () => {
       try {
         addDebugMessage("Récupération du chemin public...");
+
+        if (isWindows) {
+          addDebugMessage(
+            "Windows détecté: utilisation du système de ressources de Tauri"
+          );
+          // Sur Windows, on n'a pas besoin de chemin physique
+          setPublicPath("");
+          return;
+        }
+
+        // Pour Mac/Linux, on continue à utiliser l'approche actuelle
         const path = await invoke<string>("get_public_folder_path");
         addDebugMessage(`Chemin public récupéré: ${path}`);
 
@@ -87,16 +98,9 @@ const Home: React.FC = () => {
         addDebugMessage(`Chemin public normalisé: ${normalizedPath}`);
 
         setPublicPath(normalizedPath);
-
-        if (isWindows) {
-          addDebugMessage(
-            "Windows détecté: utilisation du chemin direct ./_up_/public/"
-          );
-        } else {
-          addDebugMessage(
-            "Mac/Linux détecté: utilisation de la méthode standard"
-          );
-        }
+        addDebugMessage(
+          "Mac/Linux détecté: utilisation de la méthode standard"
+        );
       } catch (error) {
         addDebugMessage(`ERREUR: Récupération du chemin public: ${error}`);
       }
@@ -118,9 +122,11 @@ const Home: React.FC = () => {
       let response;
 
       if (isWindows) {
-        // Méthode pour Windows: chemin direct
-        configUrl = "./_up_/public/config.json";
-        addDebugMessage(`Windows: utilisation du chemin direct: ${configUrl}`);
+        // Sur Windows, on utilise le système de ressources de Tauri
+        configUrl = "/config.json";
+        addDebugMessage(
+          `Windows: utilisation du système de ressources Tauri: ${configUrl}`
+        );
       } else {
         // Méthode pour Mac/Linux: utiliser convertFileSrc
         const filePath = `${publicPath}/config.json`;
@@ -156,10 +162,10 @@ const Home: React.FC = () => {
         let backgroundUrl;
 
         if (isWindows) {
-          // Méthode pour Windows: chemin direct
-          backgroundUrl = `./_up_/public/backgrounds/${data.background.file}`;
+          // Sur Windows, on utilise le système de ressources de Tauri
+          backgroundUrl = `/backgrounds/${data.background.file}`;
           addDebugMessage(
-            `Windows: chemin direct pour le fond: ${backgroundUrl}`
+            `Windows: utilisation du système de ressources Tauri pour le fond: ${backgroundUrl}`
           );
         } else {
           // Méthode pour Mac/Linux: utiliser convertFileSrc
@@ -252,10 +258,10 @@ const Home: React.FC = () => {
         let animationUrl;
 
         if (isWindows) {
-          // Méthode pour Windows: chemin direct
-          animationUrl = `./_up_/public/animations/${animation.file}`;
+          // Sur Windows, on utilise le système de ressources de Tauri
+          animationUrl = `/animations/${animation.file}`;
           addDebugMessage(
-            `Windows: chemin direct pour l'animation: ${animationUrl}`
+            `Windows: utilisation du système de ressources Tauri pour l'animation: ${animationUrl}`
           );
         } else {
           // Méthode pour Mac/Linux: utiliser convertFileSrc

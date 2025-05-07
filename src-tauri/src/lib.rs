@@ -115,8 +115,14 @@ fn get_public_folder_path() -> Result<String, String> {
   log::debug!("Répertoire de l'exécutable: {:?}", exe_dir);
   write_to_debug_log(&format!("Répertoire de l'exécutable: {:?}", exe_dir));
   
+  // Sur Windows, on renvoie simplement une chaîne vide car on utilisera le système de ressources de Tauri
   #[cfg(target_os = "windows")]
-  let app_dir = exe_dir.clone();
+  {
+    let result = "".to_string();
+    write_to_debug_log(&format!("Windows: utilisation du système de ressources de Tauri"));
+    write_to_debug_log(&format!("Returning empty string for Windows"));
+    return Ok(result);
+  }
   
   #[cfg(target_os = "macos")]
   let app_dir = exe_dir
@@ -131,60 +137,60 @@ fn get_public_folder_path() -> Result<String, String> {
   #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   let app_dir = exe_dir.clone();
   
-  log::debug!("Répertoire de l'application: {:?}", app_dir);
-  write_to_debug_log(&format!("Répertoire de l'application: {:?}", app_dir));
-  
-  // Utiliser les fonctions spécifiques à la plateforme pour déterminer le chemin
-  #[cfg(target_os = "windows")]
-  let public_dir = platform::windows::get_public_folder_path(&app_dir);
-  
-  #[cfg(target_os = "macos")]
-  let public_dir = platform::macos::get_public_folder_path(&app_dir);
-  
-  #[cfg(target_os = "linux")]
-  let public_dir = platform::linux::get_public_folder_path(&app_dir);
-  
-  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-  let public_dir = app_dir.parent()
-    .map(|p| p.join("public"))
-    .unwrap_or_else(|| app_dir.join("public"));
-  
-  log::info!("Dossier public: {:?}", public_dir);
-  write_to_debug_log(&format!("Dossier public: {:?}", public_dir));
-  
-  if !public_dir.exists() {
-    let err = format!("Le dossier public n'existe pas: {:?}", public_dir);
-    log::error!("{}", err);
-    write_to_debug_log(&format!("ERROR: {}", err));
-    return Err(err);
-  }
-  
-  if !public_dir.is_dir() {
-    let err = format!("Le chemin n'est pas un dossier: {:?}", public_dir);
-    log::error!("{}", err);
-    write_to_debug_log(&format!("ERROR: {}", err));
-    return Err(err);
-  }
-  
-  if let Ok(entries) = std::fs::read_dir(&public_dir) {
-    log::info!("Contenu du dossier public:");
-    write_to_debug_log("Contenu du dossier public:");
-    for entry in entries {
-      if let Ok(entry) = entry {
-        log::info!("  - {:?}", entry.path());
-        write_to_debug_log(&format!("  - {:?}", entry.path()));
-      }
+  #[cfg(not(target_os = "windows"))]
+  {
+    log::debug!("Répertoire de l'application: {:?}", app_dir);
+    write_to_debug_log(&format!("Répertoire de l'application: {:?}", app_dir));
+    
+    // Utiliser les fonctions spécifiques à la plateforme pour déterminer le chemin
+    #[cfg(target_os = "macos")]
+    let public_dir = platform::macos::get_public_folder_path(&app_dir);
+    
+    #[cfg(target_os = "linux")]
+    let public_dir = platform::linux::get_public_folder_path(&app_dir);
+    
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let public_dir = app_dir.parent()
+      .map(|p| p.join("public"))
+      .unwrap_or_else(|| app_dir.join("public"));
+    
+    log::info!("Dossier public: {:?}", public_dir);
+    write_to_debug_log(&format!("Dossier public: {:?}", public_dir));
+    
+    if !public_dir.exists() {
+      let err = format!("Le dossier public n'existe pas: {:?}", public_dir);
+      log::error!("{}", err);
+      write_to_debug_log(&format!("ERROR: {}", err));
+      return Err(err);
     }
-  } else {
-    log::error!("Impossible de lire le contenu du dossier public");
-    write_to_debug_log("ERROR: Impossible de lire le contenu du dossier public");
+    
+    if !public_dir.is_dir() {
+      let err = format!("Le chemin n'est pas un dossier: {:?}", public_dir);
+      log::error!("{}", err);
+      write_to_debug_log(&format!("ERROR: {}", err));
+      return Err(err);
+    }
+    
+    if let Ok(entries) = std::fs::read_dir(&public_dir) {
+      log::info!("Contenu du dossier public:");
+      write_to_debug_log("Contenu du dossier public:");
+      for entry in entries {
+        if let Ok(entry) = entry {
+          log::info!("  - {:?}", entry.path());
+          write_to_debug_log(&format!("  - {:?}", entry.path()));
+        }
+      }
+    } else {
+      log::error!("Impossible de lire le contenu du dossier public");
+      write_to_debug_log("ERROR: Impossible de lire le contenu du dossier public");
+    }
+    
+    let result = public_dir.to_string_lossy().to_string();
+    write_to_debug_log(&format!("Returning public folder path: {}", result));
+    write_to_debug_log(&format!("Le composant Home va utiliser ce chemin: {} (veuillez vérifier la console frontend)", result));
+    write_to_debug_log(&format!("======= FIN APPEL DEPUIS LE FRONTEND ======="));
+    return Ok(result);
   }
-  
-  let result = public_dir.to_string_lossy().to_string();
-  write_to_debug_log(&format!("Returning public folder path: {}", result));
-  write_to_debug_log(&format!("Le composant Home va utiliser ce chemin: {} (veuillez vérifier la console frontend)", result));
-  write_to_debug_log(&format!("======= FIN APPEL DEPUIS LE FRONTEND ======="));
-  Ok(result)
 }
 
 #[tauri::command]
