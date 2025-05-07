@@ -2,172 +2,89 @@ use std::fs;
 use std::path::Path;
 
 #[allow(dead_code)]
-pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(), String> {
-  log::info!("Checking if Linux installation setup is needed...");
-  
-  // Get the current executable path
-  let exe_path = std::env::current_exe()
-    .map_err(|e| format!("Failed to get executable path: {}", e))?;
-  
-  log::debug!("Executable path: {:?}", exe_path);
-  
-  // Get the directory containing the executable
-  let exe_dir = exe_path.parent()
-    .ok_or_else(|| "Failed to determine executable directory".to_string())?;
-  
-  log::debug!("Executable directory: {:?}", exe_dir);
-  
-  // Expected installation locations
-  let application_dir = Path::new("/usr/share/applications/Anglewing");
-  let local_application_dir = dirs::home_dir()
-    .map(|h| h.join(".local/share/applications/Anglewing"))
-    .ok_or_else(|| "Failed to determine home directory".to_string())?;
-  
-  // Check if we're already in the right location
-  if exe_dir.starts_with(application_dir) || exe_dir.starts_with(&local_application_dir) {
-    let public_dir = exe_dir.join("resources/public");
-    if public_dir.exists() {
-      log::info!("App is already properly installed with public resources. No need for setup.");
-      return Ok(());
-    }
-  }
-  
-  // For Linux, we'll use the local application directory for installation
-  let target_dir = local_application_dir;
-  
-  // Create the target directory if it doesn't exist
-  if !target_dir.exists() {
-    fs::create_dir_all(&target_dir)
-      .map_err(|e| format!("Failed to create target directory: {}", e))?;
-  }
-  
-  // Create the public directory structure
-  let target_public_dir = target_dir.join("resources/public");
-  let animations_dir = target_public_dir.join("animations");
-  let backgrounds_dir = target_public_dir.join("backgrounds");
-  
-  if !target_public_dir.exists() {
-    fs::create_dir_all(&target_public_dir)
-      .map_err(|e| format!("Failed to create public directory: {}", e))?;
-  }
-  
-  if !animations_dir.exists() {
-    fs::create_dir_all(&animations_dir)
-      .map_err(|e| format!("Failed to create animations directory: {}", e))?;
-  }
-  
-  if !backgrounds_dir.exists() {
-    fs::create_dir_all(&backgrounds_dir)
-      .map_err(|e| format!("Failed to create backgrounds directory: {}", e))?;
-  }
-  
-  // Check if we have embedded resources in the app that we can copy
-  let embedded_public_dir = exe_dir.join("resources").join("public");
-  
-  if embedded_public_dir.exists() {
-    // Copy embedded resources
-    copy_directory(&embedded_public_dir, &target_public_dir)
-      .map_err(|e| format!("Failed to copy embedded resources: {}", e))?;
-    log::info!("Copied embedded resources to target location");
-  }
-  
-  // Create a desktop entry file
-  let desktop_entry_path = dirs::home_dir()
-    .map(|h| h.join(".local/share/applications/anglewing.desktop"))
-    .ok_or_else(|| "Failed to determine desktop entry path".to_string())?;
-  
-  let app_name = exe_path.file_name()
-    .ok_or_else(|| "Failed to get executable name".to_string())?
-    .to_string_lossy();
-  
-  let desktop_entry_content = format!(
-    r#"[Desktop Entry]
-Name=Anglewing
-Comment=Anglewing Application
-Exec={}
-Icon={}/resources/icons/128x128.png
-Terminal=false
-Type=Application
-Categories=Utility;
-"#,
-    target_dir.join(&*app_name).to_string_lossy(),
-    target_dir.to_string_lossy()
-  );
-  
-  fs::write(&desktop_entry_path, desktop_entry_content)
-    .map_err(|e| format!("Failed to create desktop entry: {}", e))?;
-  
-  // Give execute permissions to the desktop entry
-  std::process::Command::new("chmod")
-    .args(["+x", desktop_entry_path.to_str().unwrap()])
-    .status()
-    .map_err(|e| format!("Failed to set desktop entry permissions: {}", e))?;
-  
-  // Copy the executable to the target location
-  let target_exe_path = target_dir.join(&*app_name);
-  fs::copy(&exe_path, &target_exe_path)
-    .map_err(|e| format!("Failed to copy executable: {}", e))?;
-  
-  // Give execute permissions to the executable
-  std::process::Command::new("chmod")
-    .args(["+x", target_exe_path.to_str().unwrap()])
-    .status()
-    .map_err(|e| format!("Failed to set executable permissions: {}", e))?;
-  
-  // Start the application from its new location
-  std::process::Command::new(&target_exe_path)
-    .spawn()
-    .map_err(|e| format!("Failed to start the application: {}", e))?;
-  
-  // Exit the app
-  app_handle.exit(0);
-  
-  Ok(())
-}
-
-fn copy_directory(src: &Path, dst: &Path) -> Result<(), std::io::Error> {
-  if !dst.exists() {
-    fs::create_dir_all(dst)?;
-  }
-  
-  for entry_result in fs::read_dir(src)? {
-    let entry = entry_result?;
-    let file_type = entry.file_type()?;
-    let dst_path = dst.join(entry.file_name());
-    
-    if file_type.is_dir() {
-      copy_directory(&entry.path(), &dst_path)?;
-    } else {
-      fs::copy(entry.path(), dst_path)?;
-    }
-  }
-  
+pub fn check_and_setup_installation(_app_handle: &tauri::AppHandle) -> Result<(), String> {
+  log::info!("Linux doesn't require special installation. Will create folders at runtime.");
   Ok(())
 }
 
 #[allow(dead_code)]
 pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
   // First, check if there's a public folder in the same directory as the app
-  let resources_public = app_dir.join("resources").join("public");
-  if resources_public.exists() {
-    return resources_public;
+  let same_level_public = app_dir.join("public");
+  if same_level_public.exists() {
+    return same_level_public;
   }
   
-  // Check standard Linux locations
-  let application_public = Path::new("/usr/share/applications/Anglewing/resources/public");
-  if application_public.exists() {
-    return application_public.to_path_buf();
-  }
-  
-  // Check local user application directory
-  if let Some(home) = dirs::home_dir() {
-    let local_public = home.join(".local/share/applications/Anglewing/resources/public");
-    if local_public.exists() {
-      return local_public;
+  // Check if we need to create the public folder and its subdirectories
+  if !same_level_public.exists() {
+    // Try to create the public directory
+    if let Err(e) = fs::create_dir_all(&same_level_public) {
+      log::error!("Failed to create public directory: {}", e);
+    } else {
+      // Create animations and backgrounds subdirectories
+      let animations_dir = same_level_public.join("animations");
+      let backgrounds_dir = same_level_public.join("backgrounds");
+      
+      if let Err(e) = fs::create_dir_all(&animations_dir) {
+        log::error!("Failed to create animations directory: {}", e);
+      }
+      
+      if let Err(e) = fs::create_dir_all(&backgrounds_dir) {
+        log::error!("Failed to create backgrounds directory: {}", e);
+      }
     }
   }
   
-  // Fallback: current directory or parent
+  // Try standard locations, in order:
+  // 1. Same level as executable (already checked)
+  // 2. /opt/Anglewing/
+  // It's less common for apps to install to /usr/local/bin, so we might need a different approach
+  let opt_path = Path::new("/opt/Anglewing");
+  
+  if opt_path.exists() {
+    let opt_public = opt_path.join("public");
+    if !opt_public.exists() {
+      if let Err(e) = fs::create_dir_all(&opt_public) {
+        log::error!("Failed to create public directory in /opt: {}", e);
+      } else {
+        let animations_dir = opt_public.join("animations");
+        let backgrounds_dir = opt_public.join("backgrounds");
+        
+        if let Err(e) = fs::create_dir_all(&animations_dir) {
+          log::error!("Failed to create animations directory: {}", e);
+        }
+        
+        if let Err(e) = fs::create_dir_all(&backgrounds_dir) {
+          log::error!("Failed to create backgrounds directory: {}", e);
+        }
+      }
+    }
+    return opt_public;
+  }
+  
+  // Try in the user's home directory
+  if let Ok(home_dir) = std::env::var("HOME") {
+    let home_public = Path::new(&home_dir).join(".anglewing").join("public");
+    if !home_public.exists() {
+      if let Err(e) = fs::create_dir_all(&home_public) {
+        log::error!("Failed to create public directory in home: {}", e);
+      } else {
+        let animations_dir = home_public.join("animations");
+        let backgrounds_dir = home_public.join("backgrounds");
+        
+        if let Err(e) = fs::create_dir_all(&animations_dir) {
+          log::error!("Failed to create animations directory: {}", e);
+        }
+        
+        if let Err(e) = fs::create_dir_all(&backgrounds_dir) {
+          log::error!("Failed to create backgrounds directory: {}", e);
+        }
+      }
+    }
+    return home_public;
+  }
+  
+  // Fallback: check if public dir exists as a sibling to wherever the app is
   app_dir.parent()
     .map(|p| p.join("public"))
     .unwrap_or_else(|| app_dir.join("public"))
