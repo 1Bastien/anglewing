@@ -18,6 +18,25 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
   
   log::debug!("Executable directory: {:?}", exe_dir);
   
+  // Check if the current directory is named "Anglewing"
+  let current_dir_is_anglewing = exe_dir.file_name()
+    .map(|name| name == "Anglewing")
+    .unwrap_or(false);
+  
+  // Check if there's a "public" folder at the same level as the executable
+  let public_dir = exe_dir.join("public");
+  let public_dir_exists = public_dir.exists();
+  
+  // If we're already in a directory named "Anglewing" AND we have a public directory,
+  // then we're good to go - no need for installation
+  if current_dir_is_anglewing && public_dir_exists {
+    log::info!("App is already properly installed. No need for setup.");
+    return Ok(());
+  }
+  
+  // If we're not in the correct structure, we'll move to Program Files\Anglewing
+  log::info!("App needs to be moved to Anglewing directory with public folder");
+  
   // Expected installation directory is Program Files\Anglewing
   let program_files = std::env::var("ProgramFiles")
     .unwrap_or_else(|_| "C:\\Program Files".to_string());
@@ -25,17 +44,7 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
   let expected_install_dir = Path::new(&program_files).join("Anglewing");
   log::debug!("Expected install directory: {:?}", expected_install_dir);
   
-  // Check if we're already in the right location
-  let public_dir = exe_dir.parent()
-    .map(|p| p.join("public"))
-    .ok_or_else(|| "Failed to determine public folder path".to_string())?;
-  
-  if exe_dir.starts_with(&expected_install_dir) && public_dir.exists() {
-    log::info!("App is already properly installed. No need for setup.");
-    return Ok(());
-  }
-  
-  // If we need to set up the installation
+  // Create the Anglewing directory if it doesn't exist
   if !expected_install_dir.exists() {
     fs::create_dir_all(&expected_install_dir)
       .map_err(|e| format!("Failed to create Anglewing directory: {}", e))?;
@@ -131,6 +140,13 @@ rem Delete this script
 
 #[allow(dead_code)]
 pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
+  // First, check if there's a public folder in the same directory as the app
+  let same_level_public = app_dir.join("public");
+  if same_level_public.exists() {
+    return same_level_public;
+  }
+  
+  // Fallback: check if the app is in Program Files\Anglewing
   let program_files = std::env::var("ProgramFiles")
     .unwrap_or_else(|_| "C:\\Program Files".to_string());
   
@@ -138,7 +154,7 @@ pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
   let app_in_expected_location = app_dir.starts_with(&expected_install_dir);
   
   if app_in_expected_location {
-    // If we're in the expected location, the public dir is a sibling to the exe
+    // If we're in the expected location, try the public dir at that level
     expected_install_dir.join("public")
   } else {
     // Fallback: check if public dir exists as a sibling to wherever the app is
