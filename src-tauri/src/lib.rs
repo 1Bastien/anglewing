@@ -60,6 +60,9 @@ fn get_public_folder_path() -> Result<String, String> {
   
   log::debug!("Répertoire de l'exécutable: {:?}", exe_dir);
   
+  #[cfg(target_os = "windows")]
+  let app_dir = exe_dir.clone();
+  
   #[cfg(target_os = "macos")]
   let app_dir = exe_dir
     .parent() // Remonter à Contents
@@ -67,22 +70,25 @@ fn get_public_folder_path() -> Result<String, String> {
     .map(|p| p.to_path_buf())
     .unwrap_or(exe_dir.clone());
   
-  #[cfg(target_os = "windows")]
+  #[cfg(target_os = "linux")]
   let app_dir = exe_dir.clone();
   
-  #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   let app_dir = exe_dir.clone();
   
   log::debug!("Répertoire de l'application: {:?}", app_dir);
   
   // Utiliser les fonctions spécifiques à la plateforme pour déterminer le chemin
-  #[cfg(target_os = "macos")]
-  let public_dir = platform::macos::get_public_folder_path(&app_dir);
-  
   #[cfg(target_os = "windows")]
   let public_dir = platform::windows::get_public_folder_path(&app_dir);
   
-  #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+  #[cfg(target_os = "macos")]
+  let public_dir = platform::macos::get_public_folder_path(&app_dir);
+  
+  #[cfg(target_os = "linux")]
+  let public_dir = platform::linux::get_public_folder_path(&app_dir);
+  
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   let public_dir = app_dir.parent()
     .map(|p| p.join("public"))
     .unwrap_or_else(|| app_dir.join("public"));
@@ -117,17 +123,6 @@ fn get_public_folder_path() -> Result<String, String> {
 
 #[tauri::command]
 async fn put_system_to_sleep() -> Result<(), String> {
-  #[cfg(target_os = "macos")]
-  {
-    match std::process::Command::new("pmset")
-      .args(["sleepnow"])
-      .status()
-    {
-      Ok(_) => Ok(()),
-      Err(e) => Err(format!("Failed to put macOS to sleep: {}", e)),
-    }
-  }
-
   #[cfg(target_os = "windows")]
   {
     match std::process::Command::new("rundll32.exe")
@@ -136,6 +131,17 @@ async fn put_system_to_sleep() -> Result<(), String> {
     {
       Ok(_) => Ok(()),
       Err(e) => Err(format!("Failed to put Windows to sleep: {}", e)),
+    }
+  }
+
+  #[cfg(target_os = "macos")]
+  {
+    match std::process::Command::new("pmset")
+      .args(["sleepnow"])
+      .status()
+    {
+      Ok(_) => Ok(()),
+      Err(e) => Err(format!("Failed to put macOS to sleep: {}", e)),
     }
   }
 
@@ -159,7 +165,7 @@ async fn put_system_to_sleep() -> Result<(), String> {
     }
   }
 
-  #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+  #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
   {
     Err("System sleep not supported on this platform".to_string())
   }
