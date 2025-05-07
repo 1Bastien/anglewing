@@ -32,18 +32,23 @@ const Home: React.FC = () => {
   const [publicPath, setPublicPath] = useState<string | null>(null);
   const inactivityTimerRef = useRef<number | null>(null);
   const [isWindows, setIsWindows] = useState(false);
+  const [isLinux, setIsLinux] = useState(false);
 
   // Détecter la plateforme au chargement - version simplifiée sans dépendance à os
   useEffect(() => {
     const detectPlatform = () => {
       try {
-        // Détection simplifiée - vérifier si navigator.userAgent contient "Windows"
+        // Détection simplifiée - vérifier le userAgent
         const userAgent = navigator.userAgent.toLowerCase();
         const isWin =
           userAgent.includes("windows") ||
           userAgent.includes("win32") ||
           userAgent.includes("win64");
+
+        const isLin = userAgent.includes("linux") || userAgent.includes("x11");
+
         setIsWindows(isWin);
+        setIsLinux(isLin);
       } catch (error) {
         console.error("Erreur lors de la détection de la plateforme:", error);
       }
@@ -59,7 +64,7 @@ const Home: React.FC = () => {
         // Pour toutes les plateformes, on utilise get_public_folder_path
         const path = await invoke<string>("get_public_folder_path");
 
-        // Normaliser le chemin pour Windows (remplacer les backslashes par des slashes)
+        // Normaliser le chemin pour Windows et Linux (remplacer les backslashes par des slashes)
         // Et s'assurer qu'il n'y a pas de slash à la fin
         const normalizedPath = path.replace(/\\/g, "/").replace(/\/$/, "");
         setPublicPath(normalizedPath);
@@ -72,7 +77,7 @@ const Home: React.FC = () => {
     };
 
     getPublicPath();
-  }, [isWindows]);
+  }, [isWindows, isLinux]);
 
   const loadConfig = useCallback(async () => {
     if (!publicPath) {
