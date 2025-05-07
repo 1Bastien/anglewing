@@ -37,7 +37,13 @@ const Home: React.FC = () => {
     const getPublicPath = async () => {
       try {
         const path = await invoke<string>("get_public_folder_path");
-        setPublicPath(path);
+        console.log("Chemin public récupéré:", path);
+
+        // Normaliser le chemin pour Windows (remplacer les backslashes par des slashes)
+        const normalizedPath = path.replace(/\\/g, "/");
+        console.log("Chemin public normalisé:", normalizedPath);
+
+        setPublicPath(normalizedPath);
       } catch (error) {
         console.error(
           "Erreur lors de la récupération du chemin public:",
@@ -51,11 +57,15 @@ const Home: React.FC = () => {
 
   const loadConfig = useCallback(async () => {
     if (!publicPath) {
+      console.log(
+        "Pas de chemin public disponible pour charger la configuration"
+      );
       return;
     }
 
     try {
       const configPath = convertFileSrc(`${publicPath}/config.json`);
+      console.log("URL du fichier de configuration:", configPath);
 
       const response = await fetch(configPath);
 
@@ -66,6 +76,7 @@ const Home: React.FC = () => {
       }
 
       const data = await response.json();
+      console.log("Configuration chargée:", data);
 
       if (JSON.stringify(data) === JSON.stringify(config)) {
         return;
@@ -77,6 +88,7 @@ const Home: React.FC = () => {
         const backgroundUrl = convertFileSrc(
           `${publicPath}/backgrounds/${data.background.file}`
         );
+        console.log("URL de l'image de fond:", backgroundUrl);
 
         setBackgroundStyle({
           backgroundImage: `url(${backgroundUrl})`,
@@ -157,6 +169,7 @@ const Home: React.FC = () => {
           `${publicPath}/animations/${animation.file}`
         );
         console.log("URL de l'animation:", animationUrl);
+        console.log("Fichier d'animation:", animation.file);
 
         setSelectedAnimation({
           ...animation,

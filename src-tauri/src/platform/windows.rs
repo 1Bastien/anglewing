@@ -85,17 +85,27 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
 
 #[allow(dead_code)]
 pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
+  log::info!("Windows: Recherche du chemin _up_/public...");
+  log::info!("Répertoire de départ: {:?}", app_dir);
+  
   // Priority 1: Check for _up_/public folder at parent of the executable location
   let up_dir = if let Some(parent_dir) = app_dir.parent() {
+    log::debug!("Vérification dans le parent du répertoire de l'exécutable: {:?}", parent_dir);
     parent_dir.join("_up_")
   } else {
+    log::debug!("Pas de parent, vérification dans le répertoire de l'exécutable: {:?}", app_dir);
     app_dir.join("_up_")
   };
   
   let up_public_dir = up_dir.join("public");
+  log::debug!("Tentative 1: {:?}", up_public_dir);
+  
   if up_dir.exists() && up_public_dir.exists() {
     log::info!("Found _up_/public folder: {:?}", up_public_dir);
+    debug_list_directory(&up_public_dir);
     return up_public_dir;
+  } else {
+    log::debug!("up_dir exists: {}, up_public_dir exists: {}", up_dir.exists(), up_public_dir.exists());
   }
   
   // Priority 2: Check for a direct public folder at the same level as the executable
@@ -185,4 +195,41 @@ pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
   // Log a warning and return the path to where it should be (even if it doesn't exist)
   log::warn!("Could not find any valid public directory. Using default location: {:?}", up_public_dir);
   up_public_dir
+}
+
+// Fonction pour déboguer le contenu d'un répertoire
+fn debug_list_directory(dir_path: &Path) {
+  log::info!("Listage du contenu de {:?}:", dir_path);
+  
+  match fs::read_dir(dir_path) {
+    Ok(entries) => {
+      for entry_result in entries {
+        match entry_result {
+          Ok(entry) => {
+            let path = entry.path();
+            let file_type = if path.is_dir() { "DIR" } else { "FILE" };
+            log::info!("  {} - {:?}", file_type, entry.file_name());
+            
+            // Si c'est un répertoire, afficher son contenu également
+            if path.is_dir() {
+              match fs::read_dir(&path) {
+                Ok(subentries) => {
+                  for subentry_result in subentries {
+                    if let Ok(subentry) = subentry_result {
+                      let subpath = subentry.path();
+                      let subfile_type = if subpath.is_dir() { "DIR" } else { "FILE" };
+                      log::info!("    {} - {:?}", subfile_type, subentry.file_name());
+                    }
+                  }
+                }
+                Err(e) => log::error!("    Erreur lors de la lecture du sous-répertoire: {}", e),
+              }
+            }
+          }
+          Err(e) => log::error!("  Erreur lors de la lecture d'une entrée: {}", e),
+        }
+      }
+    }
+    Err(e) => log::error!("Erreur lors de la lecture du répertoire: {}", e),
+  }
 }

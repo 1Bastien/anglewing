@@ -43,3 +43,18 @@
 .rightButton {
     margin-left: auto;
 }
+
+.errorMessage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: red;
+    padding: 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+    max-width: 80%;
+    z-index: 10;
+}

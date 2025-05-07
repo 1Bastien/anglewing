@@ -15,6 +15,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentPlayCount, setCurrentPlayCount] = useState(0);
+  const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleVideoEnded = useCallback(() => {
@@ -33,11 +34,30 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
     const video = videoRef.current;
     if (video) {
       video.addEventListener("ended", handleVideoEnded);
+
+      // Ajouter des gestionnaires d'événements pour déboguer
+      video.addEventListener("error", (e) => {
+        console.error("Erreur de chargement vidéo:", e);
+        console.error("Code d'erreur:", video.error?.code);
+        console.error("Message d'erreur:", video.error?.message);
+        setHasError(true);
+      });
+
+      video.addEventListener("loadstart", () => {
+        console.log("Chargement de la vidéo commencé");
+      });
+
+      video.addEventListener("canplay", () => {
+        console.log("La vidéo peut être lue");
+      });
     }
 
     return () => {
       if (video) {
         video.removeEventListener("ended", handleVideoEnded);
+        video.removeEventListener("error", () => {});
+        video.removeEventListener("loadstart", () => {});
+        video.removeEventListener("canplay", () => {});
       }
     };
   }, [handleVideoEnded]);
@@ -54,17 +74,30 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
     }
   };
 
+  console.log("Tentative de lecture de la vidéo depuis:", animationUrl);
+
   return (
     <div
       className={styles.playerContainer}
       onClick={() => togglePlayPause({} as React.MouseEvent<HTMLButtonElement>)}
     >
+      {hasError ? (
+        <div className={styles.errorMessage}>
+          Erreur lors du chargement de la vidéo. Le chemin pourrait être
+          incorrect.
+        </div>
+      ) : null}
+
       <video
         ref={videoRef}
         src={animationUrl}
         className={styles.videoPlayer}
         autoPlay
+        onError={(e) => {
+          console.error("Erreur de chargement de la vidéo (JSX):", e);
+        }}
       />
+
       <div className={styles.controlsContainer}>
         <PlayPauseButton
           isPlaying={isPlaying}
