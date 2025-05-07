@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 #[allow(dead_code)]
-pub fn check_and_setup_installation() -> Result<(), String> {
+pub fn check_and_setup_installation(_app_handle: &tauri::AppHandle) -> Result<(), String> {
   log::info!("Checking if installation setup is needed for Windows...");
   
   // Get the current executable path
