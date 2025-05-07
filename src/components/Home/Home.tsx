@@ -40,7 +40,8 @@ const Home: React.FC = () => {
         console.log("Chemin public récupéré:", path);
 
         // Normaliser le chemin pour Windows (remplacer les backslashes par des slashes)
-        const normalizedPath = path.replace(/\\/g, "/");
+        // Et s'assurer qu'il n'y a pas de slash à la fin
+        const normalizedPath = path.replace(/\\/g, "/").replace(/\/$/, "");
         console.log("Chemin public normalisé:", normalizedPath);
 
         setPublicPath(normalizedPath);
@@ -64,7 +65,14 @@ const Home: React.FC = () => {
     }
 
     try {
-      const configPath = convertFileSrc(`${publicPath}/config.json`);
+      // Construire le chemin avec les bons séparateurs
+      const filePath = `${publicPath}/config.json`;
+      console.log("Chemin du fichier de configuration:", filePath);
+
+      // Utilisation de encodeURI pour gérer les espaces et caractères spéciaux
+      const configPath = convertFileSrc(
+        encodeURI(filePath).replace(/#/g, "%23")
+      );
       console.log("URL du fichier de configuration:", configPath);
 
       const response = await fetch(configPath);
@@ -85,8 +93,13 @@ const Home: React.FC = () => {
       setConfig(data);
 
       if (data.background) {
+        // Construire le chemin avec les bons séparateurs
+        const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
+        console.log("Chemin de l'image de fond:", bgFilePath);
+
+        // Utilisation de encodeURI pour gérer les espaces et caractères spéciaux
         const backgroundUrl = convertFileSrc(
-          `${publicPath}/backgrounds/${data.background.file}`
+          encodeURI(bgFilePath).replace(/#/g, "%23")
         );
         console.log("URL de l'image de fond:", backgroundUrl);
 
@@ -165,8 +178,13 @@ const Home: React.FC = () => {
     if (config && publicPath) {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
+        // Construire le chemin avec les bons séparateurs
+        const animPath = `${publicPath}/animations/${animation.file}`;
+        console.log("Chemin de l'animation:", animPath);
+
+        // Utilisation de encodeURI pour gérer les espaces et caractères spéciaux
         const animationUrl = convertFileSrc(
-          `${publicPath}/animations/${animation.file}`
+          encodeURI(animPath).replace(/#/g, "%23")
         );
         console.log("URL de l'animation:", animationUrl);
         console.log("Fichier d'animation:", animation.file);
