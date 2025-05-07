@@ -18,11 +18,7 @@ pub fn check_and_setup_installation() -> Result<(), String> {
   log::debug!("Executable directory: {:?}", exe_dir);
   
   // Check if we have the _up_ folder with a public directory inside
-  let up_dir = if let Some(parent_dir) = exe_dir.parent() {
-    parent_dir.join("_up_")
-  } else {
-    Path::new(exe_dir).join("_up_")
-  };
+  let up_dir = exe_dir.join("_up_");
   
   let up_public_dir = up_dir.join("public");
   
@@ -89,14 +85,9 @@ pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
   log::info!("Windows: Recherche du chemin _up_/public...");
   log::info!("Répertoire de départ: {:?}", app_dir);
   
-  // Priority 1: Check for _up_/public folder at parent of the executable location
-  let up_dir = if let Some(parent_dir) = app_dir.parent() {
-    log::debug!("Vérification dans le parent du répertoire de l'exécutable: {:?}", parent_dir);
-    parent_dir.join("_up_")
-  } else {
-    log::debug!("Pas de parent, vérification dans le répertoire de l'exécutable: {:?}", app_dir);
-    app_dir.join("_up_")
-  };
+  // Priority 1: Check for _up_/public folder at the SAME LEVEL as the executable
+  let up_dir = app_dir.join("_up_");
+  log::debug!("Vérification dans le répertoire de l'exécutable: {:?}", up_dir);
   
   let up_public_dir = up_dir.join("public");
   log::debug!("Tentative 1: {:?}", up_public_dir);
@@ -109,7 +100,25 @@ pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
     log::debug!("up_dir exists: {}, up_public_dir exists: {}", up_dir.exists(), up_public_dir.exists());
   }
   
-  // Priority 2: Check for a direct public folder at the same level as the executable
+  // Essayons maintenant avec l'ancien comportement (dans le parent) en priorité 2
+  let parent_up_dir = if let Some(parent_dir) = app_dir.parent() {
+    log::debug!("Vérification dans le parent du répertoire de l'exécutable: {:?}", parent_dir);
+    parent_dir.join("_up_")
+  } else {
+    log::debug!("Pas de parent, on reste dans le répertoire courant");
+    app_dir.join("_up_") // Fallback qui réutilisera le même chemin que up_dir
+  };
+  
+  let parent_up_public_dir = parent_up_dir.join("public");
+  log::debug!("Tentative 2 (ancienne méthode, parent): {:?}", parent_up_public_dir);
+  
+  if parent_up_dir.exists() && parent_up_public_dir.exists() {
+    log::info!("Found _up_/public folder in parent directory: {:?}", parent_up_public_dir);
+    debug_list_directory(&parent_up_public_dir);
+    return parent_up_public_dir;
+  }
+  
+  // Priority 2 (Now 3): Check for a direct public folder at the same level as the executable
   let direct_public_dir = app_dir.join("public");
   if direct_public_dir.exists() {
     log::info!("Found public folder at executable location: {:?}", direct_public_dir);
@@ -170,25 +179,6 @@ pub fn get_public_folder_path(app_dir: &Path) -> std::path::PathBuf {
     if app_data_public.exists() {
       log::info!("Found public folder in AppData: {:?}", app_data_public);
       return app_data_public;
-    }
-  }
-  
-  // If we haven't found anything until now, we should look for _up_/public in all parent directories
-  // This is useful for development scenarios
-  let mut current_dir = app_dir;
-  for _ in 0..5 {  // Limit to 5 parent directories to avoid infinite loop
-    if let Some(parent) = current_dir.parent() {
-      let parent_up_dir = parent.join("_up_");
-      let parent_up_public = parent_up_dir.join("public");
-      
-      if parent_up_dir.exists() && parent_up_public.exists() {
-        log::info!("Found _up_/public in parent directory: {:?}", parent_up_public);
-        return parent_up_public;
-      }
-      
-      current_dir = parent;
-    } else {
-      break;
     }
   }
   
