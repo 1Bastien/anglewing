@@ -100,3 +100,13 @@
     color: #ff6b6b;
     font-weight: bold;
 }
+
+.platformIndicator {
+    display: inline-block;
+    background-color: #4a6fa5;
+    color: white;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    margin-right: 8px;
+}

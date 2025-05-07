@@ -3,8 +3,7 @@ import styles from "./Home.module.css";
 import Button from "../Button/Button";
 import CloseButton from "../CloseButton/CloseButton";
 import AnimationPlayer from "../AnimationPlayer/AnimationPlayer";
-import { invoke } from "@tauri-apps/api/core";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
 interface AnimationConfig {
   id: number;
@@ -33,10 +32,10 @@ const Home: React.FC = () => {
   const [publicPath, setPublicPath] = useState<string | null>(null);
   const inactivityTimerRef = useRef<number | null>(null);
 
-  // État pour le débogage
+  // État pour le débogage et la plateforme
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [showDebug, setShowDebug] = useState(true);
-  const [useFallbackMethod, setUseFallbackMethod] = useState(false);
+  const [isWindows, setIsWindows] = useState(false);
 
   // Fonction d'utilitaire pour ajouter des messages de débogage
   const addDebugMessage = useCallback((message: string) => {
@@ -51,6 +50,30 @@ const Home: React.FC = () => {
     });
   }, []);
 
+  // Détecter la plateforme au chargement - version simplifiée sans dépendance à os
+  useEffect(() => {
+    const detectPlatform = () => {
+      try {
+        // Détection simplifiée - vérifier si navigator.userAgent contient "Windows"
+        const userAgent = navigator.userAgent.toLowerCase();
+        const isWin =
+          userAgent.includes("windows") ||
+          userAgent.includes("win32") ||
+          userAgent.includes("win64");
+        setIsWindows(isWin);
+        addDebugMessage(`Plateforme détectée via userAgent, Windows: ${isWin}`);
+      } catch (error) {
+        console.error("Erreur lors de la détection de la plateforme:", error);
+        addDebugMessage(
+          "Impossible de détecter la plateforme, utilisation du mode standard"
+        );
+      }
+    };
+
+    detectPlatform();
+  }, [addDebugMessage]);
+
+  // Récupérer le chemin public
   useEffect(() => {
     const getPublicPath = async () => {
       try {
@@ -64,16 +87,26 @@ const Home: React.FC = () => {
         addDebugMessage(`Chemin public normalisé: ${normalizedPath}`);
 
         setPublicPath(normalizedPath);
+
+        if (isWindows) {
+          addDebugMessage(
+            "Windows détecté: utilisation du chemin direct ./_up_/public/"
+          );
+        } else {
+          addDebugMessage(
+            "Mac/Linux détecté: utilisation de la méthode standard"
+          );
+        }
       } catch (error) {
         addDebugMessage(`ERREUR: Récupération du chemin public: ${error}`);
       }
     };
 
     getPublicPath();
-  }, [addDebugMessage]);
+  }, [addDebugMessage, isWindows]);
 
   const loadConfig = useCallback(async () => {
-    if (!publicPath) {
+    if (!isWindows && !publicPath) {
       addDebugMessage(
         "Pas de chemin public disponible pour charger la configuration"
       );
@@ -81,80 +114,35 @@ const Home: React.FC = () => {
     }
 
     try {
-      let configPath;
+      let configUrl;
       let response;
 
-      if (!useFallbackMethod) {
-        // Méthode 1: Utiliser convertFileSrc avec le chemin complet
+      if (isWindows) {
+        // Méthode pour Windows: chemin direct
+        configUrl = "./_up_/public/config.json";
+        addDebugMessage(`Windows: utilisation du chemin direct: ${configUrl}`);
+      } else {
+        // Méthode pour Mac/Linux: utiliser convertFileSrc
         const filePath = `${publicPath}/config.json`;
-        addDebugMessage(`Méthode 1 - Chemin config.json: ${filePath}`);
+        addDebugMessage(`Mac/Linux: chemin config.json: ${filePath}`);
 
         const encodedPath = encodeURI(filePath).replace(/#/g, "%23");
-        configPath = convertFileSrc(encodedPath);
-        addDebugMessage(`Méthode 1 - URL convertie: ${configPath}`);
-
-        addDebugMessage("Tentative de chargement avec chemin complet...");
-        try {
-          response = await fetch(configPath);
-          addDebugMessage("Fetch config.json réussi avec méthode 1!");
-        } catch (fetchError) {
-          addDebugMessage(`Erreur fetch méthode 1: ${fetchError}`);
-          throw fetchError;
-        }
-      } else {
-        // Méthode 2: Essayer avec un chemin relatif simple
-        // Extraire le dernier segment du chemin (où _up_ devrait être)
-        const segments = publicPath.split("/");
-        const upFolder = segments.findIndex((segment) => segment === "_up_");
-
-        if (upFolder >= 0) {
-          const relativePath = segments.slice(upFolder).join("/");
-          addDebugMessage(
-            `Méthode 2 - Chemin relatif: ${relativePath}/config.json`
-          );
-
-          configPath = `./${relativePath}/config.json`;
-          addDebugMessage(`Méthode 2 - URL relative: ${configPath}`);
-
-          addDebugMessage("Tentative de chargement avec chemin relatif...");
-          try {
-            response = await fetch(configPath);
-            addDebugMessage("Fetch config.json réussi avec méthode 2!");
-          } catch (fetchError) {
-            addDebugMessage(`Erreur fetch méthode 2: ${fetchError}`);
-            throw fetchError;
-          }
-        } else {
-          // Méthode 3: Essayer avec un chemin ultra simplifié
-          configPath = `./_up_/public/config.json`;
-          addDebugMessage(`Méthode 3 - URL simplifiée: ${configPath}`);
-
-          addDebugMessage("Tentative de chargement avec chemin simplifié...");
-          try {
-            response = await fetch(configPath);
-            addDebugMessage("Fetch config.json réussi avec méthode 3!");
-          } catch (fetchError) {
-            addDebugMessage(`Erreur fetch méthode 3: ${fetchError}`);
-            throw fetchError;
-          }
-        }
+        configUrl = convertFileSrc(encodedPath);
+        addDebugMessage(`Mac/Linux: URL convertie: ${configUrl}`);
       }
+
+      addDebugMessage(
+        `Tentative de chargement de config.json depuis: ${configUrl}`
+      );
+      response = await fetch(configUrl);
 
       if (!response.ok) {
         const errMsg = `Erreur HTTP ${response.status}: ${response.statusText}`;
         addDebugMessage(`ERREUR HTTP: ${errMsg}`);
-
-        if (response.status === 403 && !useFallbackMethod) {
-          addDebugMessage(
-            "Erreur 403 détectée - Passage à la méthode alternative"
-          );
-          setUseFallbackMethod(true);
-          return; // Sortir pour que le useEffect relance loadConfig
-        }
-
         throw new Error(errMsg);
       }
 
+      addDebugMessage("Fetch config.json réussi!");
       const data = await response.json();
       addDebugMessage("Configuration JSON parsée avec succès");
 
@@ -167,27 +155,23 @@ const Home: React.FC = () => {
       if (data.background) {
         let backgroundUrl;
 
-        if (!useFallbackMethod) {
-          // Méthode standard
+        if (isWindows) {
+          // Méthode pour Windows: chemin direct
+          backgroundUrl = `./_up_/public/backgrounds/${data.background.file}`;
+          addDebugMessage(
+            `Windows: chemin direct pour le fond: ${backgroundUrl}`
+          );
+        } else {
+          // Méthode pour Mac/Linux: utiliser convertFileSrc
           const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
-          addDebugMessage(`Chemin image de fond: ${bgFilePath}`);
+          addDebugMessage(`Mac/Linux: chemin image de fond: ${bgFilePath}`);
 
           const encodedBgPath = encodeURI(bgFilePath).replace(/#/g, "%23");
           backgroundUrl = convertFileSrc(encodedBgPath);
-        } else {
-          // Méthode alternative
-          const segments = publicPath.split("/");
-          const upFolder = segments.findIndex((segment) => segment === "_up_");
-
-          if (upFolder >= 0) {
-            const relativePath = segments.slice(upFolder).join("/");
-            backgroundUrl = `./${relativePath}/backgrounds/${data.background.file}`;
-          } else {
-            backgroundUrl = `./_up_/public/backgrounds/${data.background.file}`;
-          }
+          addDebugMessage(
+            `Mac/Linux: URL convertie pour le fond: ${backgroundUrl}`
+          );
         }
-
-        addDebugMessage(`URL image de fond: ${backgroundUrl}`);
 
         setBackgroundStyle({
           backgroundImage: `url(${backgroundUrl})`,
@@ -200,17 +184,9 @@ const Home: React.FC = () => {
       addDebugMessage(`ERREUR: Chargement de la configuration: ${error}`);
       if (error instanceof Error) {
         addDebugMessage(`ERREUR détails: ${error.message}`);
-
-        // Si on n'a pas encore essayé la méthode alternative, on bascule
-        if (!useFallbackMethod) {
-          addDebugMessage(
-            "Echec avec la méthode standard - Passage à la méthode alternative"
-          );
-          setUseFallbackMethod(true);
-        }
       }
     }
-  }, [publicPath, config, addDebugMessage, useFallbackMethod]);
+  }, [publicPath, config, addDebugMessage, isWindows]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current !== null) {
@@ -264,40 +240,35 @@ const Home: React.FC = () => {
   }, [resetInactivityTimer]);
 
   useEffect(() => {
-    if (publicPath) {
-      loadConfig();
-      const intervalId = setInterval(loadConfig, CONFIG_CHECK_INTERVAL);
-      return () => clearInterval(intervalId);
-    }
-  }, [loadConfig, publicPath, useFallbackMethod]);
+    loadConfig();
+    const intervalId = setInterval(loadConfig, CONFIG_CHECK_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [loadConfig]);
 
   const handleAnimationSelect = (animationId: number) => {
-    if (config && publicPath) {
+    if (config) {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
         let animationUrl;
 
-        if (!useFallbackMethod) {
-          // Méthode standard
+        if (isWindows) {
+          // Méthode pour Windows: chemin direct
+          animationUrl = `./_up_/public/animations/${animation.file}`;
+          addDebugMessage(
+            `Windows: chemin direct pour l'animation: ${animationUrl}`
+          );
+        } else {
+          // Méthode pour Mac/Linux: utiliser convertFileSrc
           const animPath = `${publicPath}/animations/${animation.file}`;
-          addDebugMessage(`Chemin animation: ${animPath}`);
+          addDebugMessage(`Mac/Linux: chemin animation: ${animPath}`);
 
           const encodedAnimPath = encodeURI(animPath).replace(/#/g, "%23");
           animationUrl = convertFileSrc(encodedAnimPath);
-        } else {
-          // Méthode alternative
-          const segments = publicPath.split("/");
-          const upFolder = segments.findIndex((segment) => segment === "_up_");
-
-          if (upFolder >= 0) {
-            const relativePath = segments.slice(upFolder).join("/");
-            animationUrl = `./${relativePath}/animations/${animation.file}`;
-          } else {
-            animationUrl = `./_up_/public/animations/${animation.file}`;
-          }
+          addDebugMessage(
+            `Mac/Linux: URL convertie pour l'animation: ${animationUrl}`
+          );
         }
 
-        addDebugMessage(`URL animation: ${animationUrl}`);
         addDebugMessage(`Fichier d'animation: ${animation.file}`);
 
         setSelectedAnimation({
@@ -341,12 +312,9 @@ const Home: React.FC = () => {
           <div className={styles.debugHeader}>
             <h3>Informations de débogage</h3>
             <div>
-              <button
-                onClick={() => setUseFallbackMethod(!useFallbackMethod)}
-                className={styles.debugActionButton}
-              >
-                {useFallbackMethod ? "Méthode Alt" : "Méthode Std"}
-              </button>
+              <span className={styles.platformIndicator}>
+                {isWindows ? "Windows" : "Mac/Linux"}
+              </span>
               <button
                 onClick={() => setShowDebug(false)}
                 className={styles.debugCloseButton}
