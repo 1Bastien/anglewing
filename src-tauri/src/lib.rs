@@ -115,12 +115,25 @@ fn get_public_folder_path() -> Result<String, String> {
   log::debug!("Répertoire de l'exécutable: {:?}", exe_dir);
   write_to_debug_log(&format!("Répertoire de l'exécutable: {:?}", exe_dir));
   
-  // Sur Windows, on renvoie simplement une chaîne vide car on utilisera le système de ressources de Tauri
+  // Sur Windows, on renvoie le chemin vers _up_/public au lieu d'une chaîne vide
   #[cfg(target_os = "windows")]
   {
-    let result = "".to_string();
-    write_to_debug_log(&format!("Windows: utilisation du système de ressources de Tauri"));
-    write_to_debug_log(&format!("Returning empty string for Windows"));
+    // Utiliser la fonction de la plateforme Windows pour trouver le bon chemin
+    let public_dir = platform::windows::get_public_folder_path(&exe_dir);
+    
+    log::info!("Windows: Dossier public détecté: {:?}", public_dir);
+    write_to_debug_log(&format!("Windows: Dossier public détecté: {:?}", public_dir));
+    
+    // Vérifier que le dossier existe
+    if !public_dir.exists() {
+      let err = format!("Le dossier public n'existe pas: {:?}", public_dir);
+      log::error!("{}", err);
+      write_to_debug_log(&format!("ERROR: {}", err));
+      return Err(err);
+    }
+    
+    let result = public_dir.to_string_lossy().to_string();
+    write_to_debug_log(&format!("Windows: Returning path: {}", result));
     return Ok(result);
   }
   

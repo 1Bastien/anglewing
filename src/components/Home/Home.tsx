@@ -79,16 +79,7 @@ const Home: React.FC = () => {
       try {
         addDebugMessage("Récupération du chemin public...");
 
-        if (isWindows) {
-          addDebugMessage(
-            "Windows détecté: utilisation du système de ressources de Tauri"
-          );
-          // Sur Windows, on n'a pas besoin de chemin physique
-          setPublicPath("");
-          return;
-        }
-
-        // Pour Mac/Linux, on continue à utiliser l'approche actuelle
+        // Pour toutes les plateformes, on utilise get_public_folder_path
         const path = await invoke<string>("get_public_folder_path");
         addDebugMessage(`Chemin public récupéré: ${path}`);
 
@@ -98,9 +89,16 @@ const Home: React.FC = () => {
         addDebugMessage(`Chemin public normalisé: ${normalizedPath}`);
 
         setPublicPath(normalizedPath);
-        addDebugMessage(
-          "Mac/Linux détecté: utilisation de la méthode standard"
-        );
+
+        if (isWindows) {
+          addDebugMessage(
+            "Windows détecté: utilisation du chemin du système de fichiers"
+          );
+        } else {
+          addDebugMessage(
+            "Mac/Linux détecté: utilisation de la méthode standard"
+          );
+        }
       } catch (error) {
         addDebugMessage(`ERREUR: Récupération du chemin public: ${error}`);
       }
@@ -110,7 +108,7 @@ const Home: React.FC = () => {
   }, [addDebugMessage, isWindows]);
 
   const loadConfig = useCallback(async () => {
-    if (!isWindows && !publicPath) {
+    if (!publicPath) {
       addDebugMessage(
         "Pas de chemin public disponible pour charger la configuration"
       );
@@ -121,21 +119,13 @@ const Home: React.FC = () => {
       let configUrl;
       let response;
 
-      if (isWindows) {
-        // Sur Windows, on utilise le système de ressources de Tauri
-        configUrl = "/config.json";
-        addDebugMessage(
-          `Windows: utilisation du système de ressources Tauri: ${configUrl}`
-        );
-      } else {
-        // Méthode pour Mac/Linux: utiliser convertFileSrc
-        const filePath = `${publicPath}/config.json`;
-        addDebugMessage(`Mac/Linux: chemin config.json: ${filePath}`);
+      // Méthode pour toutes les plateformes: utiliser convertFileSrc
+      const filePath = `${publicPath}/config.json`;
+      addDebugMessage(`Chemin config.json: ${filePath}`);
 
-        const encodedPath = encodeURI(filePath).replace(/#/g, "%23");
-        configUrl = convertFileSrc(encodedPath);
-        addDebugMessage(`Mac/Linux: URL convertie: ${configUrl}`);
-      }
+      const encodedPath = encodeURI(filePath).replace(/#/g, "%23");
+      configUrl = convertFileSrc(encodedPath);
+      addDebugMessage(`URL convertie: ${configUrl}`);
 
       addDebugMessage(
         `Tentative de chargement de config.json depuis: ${configUrl}`
@@ -159,25 +149,13 @@ const Home: React.FC = () => {
       setConfig(data);
 
       if (data.background) {
-        let backgroundUrl;
+        // Méthode pour toutes les plateformes: utiliser convertFileSrc
+        const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
+        addDebugMessage(`Chemin image de fond: ${bgFilePath}`);
 
-        if (isWindows) {
-          // Sur Windows, on utilise le système de ressources de Tauri
-          backgroundUrl = `/backgrounds/${data.background.file}`;
-          addDebugMessage(
-            `Windows: utilisation du système de ressources Tauri pour le fond: ${backgroundUrl}`
-          );
-        } else {
-          // Méthode pour Mac/Linux: utiliser convertFileSrc
-          const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
-          addDebugMessage(`Mac/Linux: chemin image de fond: ${bgFilePath}`);
-
-          const encodedBgPath = encodeURI(bgFilePath).replace(/#/g, "%23");
-          backgroundUrl = convertFileSrc(encodedBgPath);
-          addDebugMessage(
-            `Mac/Linux: URL convertie pour le fond: ${backgroundUrl}`
-          );
-        }
+        const encodedBgPath = encodeURI(bgFilePath).replace(/#/g, "%23");
+        const backgroundUrl = convertFileSrc(encodedBgPath);
+        addDebugMessage(`URL convertie pour le fond: ${backgroundUrl}`);
 
         setBackgroundStyle({
           backgroundImage: `url(${backgroundUrl})`,
@@ -255,25 +233,13 @@ const Home: React.FC = () => {
     if (config) {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
-        let animationUrl;
+        // Méthode pour toutes les plateformes: utiliser convertFileSrc
+        const animPath = `${publicPath}/animations/${animation.file}`;
+        addDebugMessage(`Chemin animation: ${animPath}`);
 
-        if (isWindows) {
-          // Sur Windows, on utilise le système de ressources de Tauri
-          animationUrl = `/animations/${animation.file}`;
-          addDebugMessage(
-            `Windows: utilisation du système de ressources Tauri pour l'animation: ${animationUrl}`
-          );
-        } else {
-          // Méthode pour Mac/Linux: utiliser convertFileSrc
-          const animPath = `${publicPath}/animations/${animation.file}`;
-          addDebugMessage(`Mac/Linux: chemin animation: ${animPath}`);
-
-          const encodedAnimPath = encodeURI(animPath).replace(/#/g, "%23");
-          animationUrl = convertFileSrc(encodedAnimPath);
-          addDebugMessage(
-            `Mac/Linux: URL convertie pour l'animation: ${animationUrl}`
-          );
-        }
+        const encodedAnimPath = encodeURI(animPath).replace(/#/g, "%23");
+        const animationUrl = convertFileSrc(encodedAnimPath);
+        addDebugMessage(`URL convertie pour l'animation: ${animationUrl}`);
 
         addDebugMessage(`Fichier d'animation: ${animation.file}`);
 

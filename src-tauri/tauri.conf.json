@@ -24,7 +24,14 @@
       "assetProtocol": {
         "enable": true,
         "scope": {
-          "allow": ["/Applications/Anglewing/public/**"]
+          "allow": [
+            "/Applications/Anglewing/public/**",
+            "C:/Program Files/Anglewing/_up_/public/**",
+            "C:/Program Files/Anglewing/public/**",
+            "C:/Program Files (x86)/Anglewing/_up_/public/**",
+            "C:/Program Files (x86)/Anglewing/public/**",
+            "./**"
+          ]
         }
       }
     }
