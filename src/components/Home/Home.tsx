@@ -33,32 +33,47 @@ const Home: React.FC = () => {
   const [publicPath, setPublicPath] = useState<string | null>(null);
   const inactivityTimerRef = useRef<number | null>(null);
 
+  // État pour le débogage
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [showDebug, setShowDebug] = useState(true);
+
+  // Fonction d'utilitaire pour ajouter des messages de débogage
+  const addDebugMessage = useCallback((message: string) => {
+    console.log(message);
+    setDebugInfo((prev) => {
+      const newMessages = [...prev, message];
+      // Garder seulement les 15 derniers messages pour éviter de surcharger l'écran
+      if (newMessages.length > 15) {
+        return newMessages.slice(newMessages.length - 15);
+      }
+      return newMessages;
+    });
+  }, []);
+
   useEffect(() => {
     const getPublicPath = async () => {
       try {
+        addDebugMessage("Récupération du chemin public...");
         const path = await invoke<string>("get_public_folder_path");
-        console.log("Chemin public récupéré:", path);
+        addDebugMessage(`Chemin public récupéré: ${path}`);
 
         // Normaliser le chemin pour Windows (remplacer les backslashes par des slashes)
         // Et s'assurer qu'il n'y a pas de slash à la fin
         const normalizedPath = path.replace(/\\/g, "/").replace(/\/$/, "");
-        console.log("Chemin public normalisé:", normalizedPath);
+        addDebugMessage(`Chemin public normalisé: ${normalizedPath}`);
 
         setPublicPath(normalizedPath);
       } catch (error) {
-        console.error(
-          "Erreur lors de la récupération du chemin public:",
-          error
-        );
+        addDebugMessage(`ERREUR: Récupération du chemin public: ${error}`);
       }
     };
 
     getPublicPath();
-  }, []);
+  }, [addDebugMessage]);
 
   const loadConfig = useCallback(async () => {
     if (!publicPath) {
-      console.log(
+      addDebugMessage(
         "Pas de chemin public disponible pour charger la configuration"
       );
       return;
@@ -67,15 +82,16 @@ const Home: React.FC = () => {
     try {
       // Construire le chemin avec les bons séparateurs
       const filePath = `${publicPath}/config.json`;
-      console.log("Chemin du fichier de configuration:", filePath);
+      addDebugMessage(`Chemin config.json: ${filePath}`);
 
       // Utilisation de encodeURI pour gérer les espaces et caractères spéciaux
-      const configPath = convertFileSrc(
-        encodeURI(filePath).replace(/#/g, "%23")
-      );
-      console.log("URL du fichier de configuration:", configPath);
+      const encodedPath = encodeURI(filePath).replace(/#/g, "%23");
+      const configPath = convertFileSrc(encodedPath);
+      addDebugMessage(`URL convertie: ${configPath}`);
 
+      addDebugMessage("Tentative de chargement de config.json...");
       const response = await fetch(configPath);
+      addDebugMessage("Fetch config.json réussi!");
 
       if (!response.ok) {
         throw new Error(
@@ -84,7 +100,7 @@ const Home: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log("Configuration chargée:", data);
+      addDebugMessage("Configuration JSON parsée avec succès");
 
       if (JSON.stringify(data) === JSON.stringify(config)) {
         return;
@@ -95,13 +111,12 @@ const Home: React.FC = () => {
       if (data.background) {
         // Construire le chemin avec les bons séparateurs
         const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
-        console.log("Chemin de l'image de fond:", bgFilePath);
+        addDebugMessage(`Chemin image de fond: ${bgFilePath}`);
 
         // Utilisation de encodeURI pour gérer les espaces et caractères spéciaux
-        const backgroundUrl = convertFileSrc(
-          encodeURI(bgFilePath).replace(/#/g, "%23")
-        );
-        console.log("URL de l'image de fond:", backgroundUrl);
+        const encodedBgPath = encodeURI(bgFilePath).replace(/#/g, "%23");
+        const backgroundUrl = convertFileSrc(encodedBgPath);
+        addDebugMessage(`URL image de fond: ${backgroundUrl}`);
 
         setBackgroundStyle({
           backgroundImage: `url(${backgroundUrl})`,
@@ -111,9 +126,9 @@ const Home: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error("Erreur lors du chargement de la configuration:", error);
+      addDebugMessage(`ERREUR: Chargement de la configuration: ${error}`);
     }
-  }, [publicPath, config]);
+  }, [publicPath, config, addDebugMessage]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current !== null) {
@@ -180,14 +195,13 @@ const Home: React.FC = () => {
       if (animation) {
         // Construire le chemin avec les bons séparateurs
         const animPath = `${publicPath}/animations/${animation.file}`;
-        console.log("Chemin de l'animation:", animPath);
+        addDebugMessage(`Chemin animation: ${animPath}`);
 
         // Utilisation de encodeURI pour gérer les espaces et caractères spéciaux
-        const animationUrl = convertFileSrc(
-          encodeURI(animPath).replace(/#/g, "%23")
-        );
-        console.log("URL de l'animation:", animationUrl);
-        console.log("Fichier d'animation:", animation.file);
+        const encodedAnimPath = encodeURI(animPath).replace(/#/g, "%23");
+        const animationUrl = convertFileSrc(encodedAnimPath);
+        addDebugMessage(`URL animation: ${animationUrl}`);
+        addDebugMessage(`Fichier d'animation: ${animation.file}`);
 
         setSelectedAnimation({
           ...animation,
@@ -222,6 +236,32 @@ const Home: React.FC = () => {
           playCount={selectedAnimation.playCount}
           onClose={closeAnimationPlayer}
         />
+      )}
+
+      {/* Affichage des informations de débogage */}
+      {showDebug && (
+        <div className={styles.debugPanel}>
+          <div className={styles.debugHeader}>
+            <h3>Informations de débogage</h3>
+            <button
+              onClick={() => setShowDebug(false)}
+              className={styles.debugCloseButton}
+            >
+              Fermer
+            </button>
+          </div>
+          <div className={styles.debugContent}>
+            {debugInfo.map((message, index) => (
+              <div key={index} className={styles.debugMessage}>
+                {message.includes("ERREUR") ? (
+                  <div className={styles.debugError}>{message}</div>
+                ) : (
+                  <div>{message}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -89,6 +89,7 @@ fn close_application(app_handle: tauri::AppHandle) {
 #[tauri::command]
 fn get_public_folder_path() -> Result<String, String> {
   log::info!("Récupération du chemin du dossier public");
+  write_to_debug_log(&format!("======= APPEL DEPUIS LE FRONTEND - get_public_folder_path ======="));
   
   let exe_path = std::env::current_exe()
       .map_err(|e| {
@@ -181,6 +182,8 @@ fn get_public_folder_path() -> Result<String, String> {
   
   let result = public_dir.to_string_lossy().to_string();
   write_to_debug_log(&format!("Returning public folder path: {}", result));
+  write_to_debug_log(&format!("Le composant Home va utiliser ce chemin: {} (veuillez vérifier la console frontend)", result));
+  write_to_debug_log(&format!("======= FIN APPEL DEPUIS LE FRONTEND ======="));
   Ok(result)
 }
 
