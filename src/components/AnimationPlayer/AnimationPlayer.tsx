@@ -51,18 +51,47 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
       video.addEventListener("ended", handleVideoEnded);
 
       video.addEventListener("error", () => {
-        const errorMsg = `Erreur vidéo: Code ${video.error?.code}, ${video.error?.message}`;
-        addLog(errorMsg);
+        const errorTypes = {
+          1: "MEDIA_ERR_ABORTED - La lecture a été annulée",
+          2: "MEDIA_ERR_NETWORK - Erreur réseau",
+          3: "MEDIA_ERR_DECODE - Erreur de décodage",
+          4: "MEDIA_ERR_SRC_NOT_SUPPORTED - Format non supporté ou source inaccessible",
+        };
+
+        const errorCode = video.error?.code || 0;
+        const errorMessage =
+          errorTypes[errorCode as keyof typeof errorTypes] || "Erreur inconnue";
+        const detailedError = `${errorMessage} (Code ${errorCode}): ${video.error?.message}`;
+
+        console.error("Erreur vidéo détaillée:", {
+          code: errorCode,
+          message: video.error?.message,
+          currentSrc: video.currentSrc,
+          readyState: video.readyState,
+          networkState: video.networkState,
+          error: video.error,
+        });
+
+        addLog(detailedError);
         setHasError(true);
-        setErrorDetails(errorMsg);
+        setErrorDetails(detailedError);
       });
 
       video.addEventListener("loadstart", () => {
-        addLog("Chargement vidéo démarré");
+        addLog(`Chargement vidéo démarré: ${processedAnimationUrl}`);
       });
 
       video.addEventListener("canplay", () => {
-        addLog("Vidéo prête à être lue");
+        addLog(`Vidéo prête à être lue: ${processedAnimationUrl}`);
+      });
+
+      // Add more event listeners for debugging
+      video.addEventListener("loadedmetadata", () => {
+        addLog("Métadonnées chargées");
+      });
+
+      video.addEventListener("stalled", () => {
+        addLog("Lecture bloquée");
       });
     }
 
@@ -72,9 +101,11 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         video.removeEventListener("error", () => {});
         video.removeEventListener("loadstart", () => {});
         video.removeEventListener("canplay", () => {});
+        video.removeEventListener("loadedmetadata", () => {});
+        video.removeEventListener("stalled", () => {});
       }
     };
-  }, [handleVideoEnded]);
+  }, [handleVideoEnded, processedAnimationUrl]);
 
   const togglePlayPause = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();

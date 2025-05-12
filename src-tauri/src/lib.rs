@@ -34,12 +34,17 @@ fn get_public_folder_path() -> Result<String, String> {
   let exe_path = std::env::current_exe()
       .map_err(|e| format!("Impossible d'obtenir le chemin de l'exécutable: {}", e))?;
   
+  log::info!("Executable path: {:?}", exe_path);
+  
   let exe_dir = match exe_path.parent() {
     Some(dir) => dir.to_path_buf(),
     None => {
+      log::error!("Failed to get executable parent directory");
       return Err("Impossible d'obtenir le répertoire parent de l'exécutable".to_string());
     }
   };
+  
+  log::info!("Executable directory: {:?}", exe_dir);
   
   // Sur Windows, on renvoie le chemin vers _up_/public au lieu d'une chaîne vide
   #[cfg(target_os = "windows")]
@@ -90,7 +95,18 @@ fn get_public_folder_path() -> Result<String, String> {
       return Err(format!("Le chemin n'est pas un dossier: {:?}", public_dir));
     }
     
-    return Ok(public_dir.to_string_lossy().to_string());
+    // Check if the directory is readable
+    match std::fs::read_dir(&public_dir) {
+      Ok(_) => log::info!("Public directory is readable"),
+      Err(e) => {
+        log::error!("Public directory is not readable: {}", e);
+        return Err(format!("Le dossier public n'est pas lisible: {}", e));
+      }
+    }
+    
+    let path_str = public_dir.to_string_lossy().to_string();
+    log::info!("Returning public directory path: {}", path_str);
+    return Ok(path_str);
   }
 }
 

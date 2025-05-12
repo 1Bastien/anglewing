@@ -7,19 +7,19 @@
     {
       "id": 1,
       "title": "Animation 1",
-      "file": "Animation_1.mp4",
+      "file": "Animation_1.webm",
       "playCount": 3
     },
     {
       "id": 2,
       "title": "Animation 2",
-      "file": "Animation_2.mp4",
+      "file": "Animation_2.webm",
       "playCount": 3
     },
     {
       "id": 3,
       "title": "Animation 3",
-      "file": "Animation_3.mp4",
+      "file": "Animation_3.webm",
       "playCount": 3
     }
   ]
