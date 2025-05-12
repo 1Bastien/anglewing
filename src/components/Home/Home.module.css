@@ -24,3 +24,45 @@
     bottom: 5%;
     gap: 100px;
 }
+
+.debugInfo {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 1000;
+    max-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.debugInfo h3 {
+    margin: 10px 0 5px 0;
+    color: #4CAF50;
+}
+
+.logs {
+    margin-top: 5px;
+    padding: 5px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+.logEntry {
+    margin: 3px 0;
+    padding: 2px 5px;
+    border-left: 2px solid #4CAF50;
+}
+
+.error {
+    color: #ff6b6b;
+    font-weight: bold;
+    padding: 5px;
+    background: rgba(255, 0, 0, 0.2);
+    border-radius: 3px;
+    margin: 5px 0;
+}
