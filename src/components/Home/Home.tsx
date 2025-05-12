@@ -85,7 +85,9 @@ const Home: React.FC = () => {
 
       // Méthode pour toutes les plateformes: utiliser convertFileSrc
       const filePath = `${publicPath}/config.json`;
-      const encodedPath = encodeURI(filePath).replace(/#/g, "%23");
+      const encodedPath = isWindows
+        ? encodeURI(filePath).replace(/#/g, "%23")
+        : filePath;
       configUrl = convertFileSrc(encodedPath);
       response = await fetch(configUrl);
 
@@ -106,7 +108,9 @@ const Home: React.FC = () => {
       if (data.background) {
         // Méthode pour toutes les plateformes: utiliser convertFileSrc
         const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
-        const encodedBgPath = encodeURI(bgFilePath).replace(/#/g, "%23");
+        const encodedBgPath = isWindows
+          ? encodeURI(bgFilePath).replace(/#/g, "%23")
+          : bgFilePath;
         const backgroundUrl = convertFileSrc(encodedBgPath);
 
         setBackgroundStyle({
@@ -119,7 +123,7 @@ const Home: React.FC = () => {
     } catch (error) {
       console.error("Erreur lors du chargement de la configuration:", error);
     }
-  }, [publicPath, config]);
+  }, [publicPath, config, isWindows]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current !== null) {
@@ -219,6 +223,7 @@ const Home: React.FC = () => {
           animationUrl={selectedAnimation.file}
           playCount={selectedAnimation.playCount}
           onClose={closeAnimationPlayer}
+          isWindows={isWindows}
         />
       )}
     </div>

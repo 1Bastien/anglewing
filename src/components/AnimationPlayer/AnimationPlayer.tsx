@@ -6,17 +6,24 @@ interface AnimationPlayerProps {
   animationUrl: string;
   playCount: number;
   onClose: () => void;
+  isWindows?: boolean;
 }
 
 const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   animationUrl,
   playCount,
   onClose,
+  isWindows = false,
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentPlayCount, setCurrentPlayCount] = useState(0);
   const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Préparer l'URL de la vidéo en fonction de la plateforme
+  const processedAnimationUrl = isWindows
+    ? animationUrl
+    : animationUrl.replace(/%2F/g, "/");
 
   const handleVideoEnded = useCallback(() => {
     if (currentPlayCount < playCount - 1) {
@@ -74,7 +81,10 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
     }
   };
 
-  console.log("Tentative de lecture de la vidéo depuis:", animationUrl);
+  console.log(
+    "Tentative de lecture de la vidéo depuis:",
+    processedAnimationUrl
+  );
 
   return (
     <div
@@ -90,7 +100,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
 
       <video
         ref={videoRef}
-        src={animationUrl}
+        src={processedAnimationUrl}
         className={styles.videoPlayer}
         autoPlay
         onError={(e) => {

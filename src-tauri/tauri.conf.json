@@ -30,13 +30,7 @@
             "C:/Program Files/Anglewing/public/**",
             "C:/Program Files (x86)/Anglewing/_up_/public/**",
             "C:/Program Files (x86)/Anglewing/public/**",
-            "/usr/share/anglewing/public/**",
-            "/usr/local/share/anglewing/public/**",
-            "/opt/anglewing/public/**",
-            "/usr/share/anglewing/_up_/public/**",
-            "/usr/local/share/anglewing/_up_/public/**",
-            "/opt/anglewing/_up_/public/**",
-            "./**"
+            "/usr/lib/Anglewing/_up_/public/**"
           ]
         }
       }
