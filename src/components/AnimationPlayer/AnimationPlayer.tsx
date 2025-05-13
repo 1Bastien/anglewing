@@ -10,10 +10,6 @@ interface AnimationPlayerProps {
   isWindows?: boolean;
 }
 
-// Détection de la plateforme une seule fois en dehors du composant
-const userAgent = navigator.userAgent.toLowerCase();
-const isLinuxPlatform = userAgent.includes("linux");
-
 const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   animationUrl,
   playCount,
@@ -30,12 +26,8 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
     setLogs((prev) => [...prev.slice(-4), message]);
   };
 
-  // Préparer l'URL de la vidéo en fonction de la plateforme
-  const processedAnimationUrl = isWindows
-    ? animationUrl
-    : isLinuxPlatform
-    ? `file://${animationUrl}`
-    : animationUrl.replace(/%2F/g, "/");
+  // L'URL est déjà traitée par convertFileSrc dans Home.tsx
+  const processedAnimationUrl = animationUrl.replace(/%2F/g, "/");
 
   const handleVideoEnded = useCallback(() => {
     if (currentPlayCount < playCount - 1) {
@@ -74,10 +66,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         <p>
           Lecture: {currentPlayCount + 1}/{playCount}
         </p>
-        <p>
-          Plateforme:{" "}
-          {isLinuxPlatform ? "Linux" : isWindows ? "Windows" : "macOS"}
-        </p>
+        <p>Plateforme: {isWindows ? "Windows" : "Unix"}</p>
         <p>URL vidéo: {processedAnimationUrl}</p>
 
         <h3>Logs lecture</h3>
@@ -95,10 +84,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
           <p>Erreur lors du chargement de la vidéo</p>
           <p>Détails: {errorDetails}</p>
           <p>URL utilisée: {processedAnimationUrl}</p>
-          <p>
-            Plateforme:{" "}
-            {isLinuxPlatform ? "Linux" : isWindows ? "Windows" : "macOS"}
-          </p>
+          <p>Plateforme: {isWindows ? "Windows" : "Unix"}</p>
         </div>
       ) : null}
 

@@ -189,9 +189,10 @@ const Home: React.FC = () => {
     if (config) {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
-        // Méthode pour toutes les plateformes: utiliser convertFileSrc
         const animPath = `${publicPath}/animations/${animation.file}`;
-        const encodedAnimPath = encodeURI(animPath).replace(/#/g, "%23");
+        const encodedAnimPath = encodeURI(animPath)
+          .replace(/%2F/g, "/")
+          .replace(/#/g, "%23");
         const animationUrl = convertFileSrc(encodedAnimPath);
 
         setSelectedAnimation({
