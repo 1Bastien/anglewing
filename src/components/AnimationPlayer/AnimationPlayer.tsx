@@ -42,12 +42,34 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   }, [currentPlayCount, playCount, onClose]);
 
   const handleError = (error: any) => {
-    const errorMessage = `Erreur de lecture: ${
-      error?.message || "Erreur inconnue"
-    }`;
-    addLog(errorMessage);
+    let errorMessage = "Erreur inconnue";
+
+    // Détails de l'erreur
+    if (error) {
+      if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else {
+        try {
+          errorMessage = JSON.stringify(error);
+        } catch {
+          errorMessage = "Erreur non sérialisable";
+        }
+      }
+    }
+
+    // Ajouter des informations sur l'état du lecteur
+    const errorDetails = `
+      Erreur de lecture: ${errorMessage}
+      État du lecteur: ${isReady ? "Prêt" : "Non prêt"}
+      État de lecture: ${isPlaying ? "En lecture" : "En pause"}
+      Compteur: ${currentPlayCount + 1}/${playCount}
+    `.trim();
+
+    addLog(`Erreur détectée: ${errorMessage}`);
     setHasError(true);
-    setErrorDetails(errorMessage);
+    setErrorDetails(errorDetails);
   };
 
   const togglePlayPause = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -55,6 +77,8 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
     if (isReady) {
       setIsPlaying(!isPlaying);
       addLog(isPlaying ? "Lecture en pause" : "Lecture reprise");
+    } else {
+      addLog("Lecteur pas encore prêt");
     }
   };
 
@@ -86,7 +110,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
       {hasError ? (
         <div className={styles.errorMessage}>
           <p>Erreur lors du chargement de la vidéo</p>
-          <p>Détails: {errorDetails}</p>
+          <p style={{ whiteSpace: "pre-line" }}>Détails: {errorDetails}</p>
           <p>URL utilisée: {processedAnimationUrl}</p>
           <p>Plateforme: {isWindows ? "Windows" : "Unix"}</p>
         </div>
