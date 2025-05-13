@@ -1,13 +1,11 @@
 use std::fs;
 use std::path::Path;
-use dirs;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 use tauri::Manager;
 
-// Function to check if a directory is empty or doesn't exist
 fn is_dir_empty_or_missing(path: &Path) -> bool {
   if !path.exists() {
     return true;
@@ -22,7 +20,6 @@ fn is_dir_empty_or_missing(path: &Path) -> bool {
   }
 }
 
-// Function to check if important files exist
 fn are_important_files_missing(path: &Path) -> bool {
   let important_files = ["config.json", "readme.txt"];
   for file in important_files.iter() {
@@ -33,7 +30,6 @@ fn are_important_files_missing(path: &Path) -> bool {
   false
 }
 
-// Function to recursively copy directory contents
 fn copy_dir_contents(from: &Path, to: &Path) -> Result<(), String> {
   if !from.exists() {
     return Err(format!("Source path does not exist: {:?}", from));
@@ -62,7 +58,6 @@ fn copy_dir_contents(from: &Path, to: &Path) -> Result<(), String> {
     
     #[cfg(unix)]
     {
-      // Set permissions to 755 for directories and 644 for files on Unix systems
       let mode = if path.is_dir() { 0o755 } else { 0o644 };
       fs::set_permissions(
         &target,
@@ -77,12 +72,9 @@ fn copy_dir_contents(from: &Path, to: &Path) -> Result<(), String> {
 pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(), String> {
   log::info!("Linux: Checking installation setup");
   
-  // Get the home directory path
-  let home_dir = dirs::home_dir()
-    .ok_or_else(|| "Could not find home directory".to_string())?;
-  let user_public_path = home_dir.join(".anglewing/public");
+  let target_dir = Path::new("/home/docaret/.anglewing");
+  let user_public_path = target_dir.join("public");
   
-  // Get the resource path (the bundled public folder)
   let resource_path = app_handle
     .path()
     .resolve("public", tauri::path::BaseDirectory::Resource)
@@ -91,7 +83,6 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
   log::info!("Resource path: {:?}", resource_path);
   log::info!("User public path: {:?}", user_public_path);
   
-  // Check if the public directory is empty or missing
   let animations_dir = user_public_path.join("animations");
   let backgrounds_dir = user_public_path.join("backgrounds");
   
@@ -101,7 +92,6 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
      are_important_files_missing(&user_public_path) {
     log::info!("Public directory is empty, missing required subdirectories, or missing important files. Copying resources...");
     
-    // Create the directory structure
     for dir in [&user_public_path, &animations_dir, &backgrounds_dir] {
       if let Err(e) = fs::create_dir_all(dir) {
         log::error!("Failed to create directory {:?}: {}", dir, e);
@@ -116,7 +106,6 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
       }
     }
     
-    // Copy the contents from resource directory to user directory
     copy_dir_contents(&resource_path, &user_public_path)?;
     log::info!("Successfully copied public resources to user directory");
   } else {
@@ -128,11 +117,25 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
 
 #[allow(dead_code)]
 pub fn get_public_folder_path(_app_dir_: &Path) -> std::path::PathBuf {
-  let home_dir = dirs::home_dir()
-    .expect("Could not find home directory");
-  let lib_path = home_dir.join(".anglewing/public");
+  let is_dev = std::env::var("TAURI_DEBUG").is_ok();
   
-  // The check_and_setup_installation function will handle the directory creation and population
+  if is_dev {
+    let current_dir = std::env::current_dir()
+      .expect("Could not get current directory");
+    let dev_path = current_dir
+      .parent()
+      .unwrap_or(&current_dir)
+      .join("public");
+    
+    log::info!("Development mode: using public directory at {:?}", dev_path);
+    return dev_path;
+  }
+  
+  let target_dir = Path::new("/home/docaret/.anglewing");
+  let lib_path = target_dir.join("public");
+  
+  log::info!("Production mode: using public directory at {:?}", lib_path);
+  
   if !lib_path.exists() {
     log::info!("Public directory does not exist at {:?}", lib_path);
   } else {

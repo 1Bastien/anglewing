@@ -30,15 +30,11 @@
         "enable": true,
         "scope": {
           "allow": [
-            "/Applications/Anglewing/public/**",
-            "C:/Program Files/Anglewing/_up_/public/**",
-            "C:/Program Files/Anglewing/public/**",
-            "C:/Program Files (x86)/Anglewing/_up_/public/**",
-            "C:/Program Files (x86)/Anglewing/public/**",
-            "/usr/lib/Anglewing/_up_/public/**",
-            "~/.anglewing/public/**",
             "$HOME/.anglewing/public/**",
-            "file://**"
+            "file://**",
+            "/home/docaret/.anglewing/public/**",
+            "/home/docaret/.anglewing/animations/**",
+            "/home/docaret/.anglewing/backgrounds/**"
           ]
         }
       }
