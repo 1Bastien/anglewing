@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import styles from "./AnimationPlayer.module.css";
 import PlayPauseButton from "../PlayPauseButton/PlayPauseButton";
-import ReactPlayer from "react-player";
+import ReactPlayer from "react-player/file";
 
 interface AnimationPlayerProps {
   animationUrl: string;
@@ -22,9 +22,13 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   const [errorDetails, setErrorDetails] = useState<string>("");
   const [logs, setLogs] = useState<string[]>([]);
   const [isReady, setIsReady] = useState(false);
+  const [playerState, setPlayerState] = useState<string>("Non initialisé");
 
   const addLog = (message: string) => {
-    setLogs((prev) => [...prev.slice(-4), message]);
+    setLogs((prev) => [
+      ...prev.slice(-4),
+      `${new Date().toISOString().split("T")[1]} - ${message}`,
+    ]);
   };
 
   // L'URL est déjà traitée par convertFileSrc dans Home.tsx
@@ -64,7 +68,9 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
       Erreur de lecture: ${errorMessage}
       État du lecteur: ${isReady ? "Prêt" : "Non prêt"}
       État de lecture: ${isPlaying ? "En lecture" : "En pause"}
+      État du player: ${playerState}
       Compteur: ${currentPlayCount + 1}/${playCount}
+      URL: ${processedAnimationUrl}
     `.trim();
 
     addLog(`Erreur détectée: ${errorMessage}`);
@@ -96,6 +102,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         <p>Plateforme: {isWindows ? "Windows" : "Unix"}</p>
         <p>URL vidéo: {processedAnimationUrl}</p>
         <p>Lecteur prêt: {isReady ? "Oui" : "Non"}</p>
+        <p>État du player: {playerState}</p>
 
         <h3>Logs lecture</h3>
         <div className={styles.logs}>
@@ -125,21 +132,39 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
           height="100%"
           onEnded={handleVideoEnded}
           onError={handleError}
-          onBuffer={() => addLog("Mise en mémoire tampon...")}
-          onBufferEnd={() => addLog("Lecture prête")}
+          onBuffer={() => {
+            setPlayerState("Mise en mémoire tampon");
+            addLog("Mise en mémoire tampon...");
+          }}
+          onBufferEnd={() => {
+            setPlayerState("Tampon prêt");
+            addLog("Lecture prête");
+          }}
           onReady={() => {
             setIsReady(true);
+            setPlayerState("Prêt");
             addLog("Lecteur prêt");
           }}
-          onStart={() => addLog("Lecture démarrée")}
+          onStart={() => {
+            setPlayerState("En lecture");
+            addLog("Lecture démarrée");
+          }}
+          onPause={() => {
+            setPlayerState("En pause");
+            addLog("Lecture en pause");
+          }}
+          onPlay={() => {
+            setPlayerState("En lecture");
+            addLog("Lecture en cours");
+          }}
           config={{
-            file: {
-              attributes: {
-                playsInline: true,
-                controlsList: "nodownload",
-              },
-              forceVideo: true,
+            attributes: {
+              playsInline: true,
+              controlsList: "nodownload",
             },
+            forceVideo: true,
+            forceHLS: false,
+            forceDASH: false,
           }}
         />
       </div>
