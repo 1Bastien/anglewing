@@ -21,6 +21,6 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    bottom: 5%;
+    bottom: 15%;
     gap: 100px;
 }
