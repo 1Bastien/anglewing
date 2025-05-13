@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import styles from "./AnimationPlayer.module.css";
 import PlayPauseButton from "../PlayPauseButton/PlayPauseButton";
-import ReactPlayer from "react-player/file";
+import ReactPlayer from "react-player";
 
 interface AnimationPlayerProps {
   animationUrl: string;
@@ -156,15 +156,6 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
           onPlay={() => {
             setPlayerState("En lecture");
             addLog("Lecture en cours");
-          }}
-          config={{
-            attributes: {
-              playsInline: true,
-              controlsList: "nodownload",
-            },
-            forceVideo: true,
-            forceHLS: false,
-            forceDASH: false,
           }}
         />
       </div>

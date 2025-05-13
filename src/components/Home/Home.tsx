@@ -190,16 +190,15 @@ const Home: React.FC = () => {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
         const animPath = `${publicPath}/animations/${animation.file}`;
-        const encodedAnimPath = isWindows
-          ? encodeURI(animPath).replace(/#/g, "%23")
-          : animPath;
-        const animationUrl = convertFileSrc(encodedAnimPath);
+        const animationUrl = isWindows
+          ? convertFileSrc(encodeURI(animPath).replace(/#/g, "%23"))
+          : `file://${animPath}`;
 
         setSelectedAnimation({
           ...animation,
           file: animationUrl,
         });
-        addLog(`Animation chargée: ${animation.file}`);
+        addLog(`Animation chargée: ${animation.file} (${animationUrl})`);
       }
     }
   };
