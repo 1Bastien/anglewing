@@ -26,53 +26,24 @@ const CONFIG_CHECK_INTERVAL = 30000;
 
 const Home: React.FC = () => {
   const [backgroundStyle, setBackgroundStyle] = useState({});
-  const [selectedAnimation, setSelectedAnimation] =
-    useState<AnimationConfig | null>(null);
+  const [selectedAnimation, setSelectedAnimation] = useState<AnimationConfig | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [publicPath, setPublicPath] = useState<string | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
   const inactivityTimerRef = useRef<number | null>(null);
-  const [isWindows, setIsWindows] = useState(false);
 
-  const addLog = (message: string) => {
-    setLogs((prev) => [...prev.slice(-9), message]); // Garde les 10 derniers logs
-  };
-
-  // Détecter la plateforme au chargement
-  useEffect(() => {
-    const detectPlatform = () => {
-      try {
-        const userAgent = navigator.userAgent.toLowerCase();
-        const isWin =
-          userAgent.includes("windows") ||
-          userAgent.includes("win32") ||
-          userAgent.includes("win64");
-        setIsWindows(isWin);
-        addLog(`Plateforme détectée: ${isWin ? "Windows" : "Non-Windows"}`);
-      } catch (error) {
-        addLog(`Erreur détection plateforme: ${error}`);
-      }
-    };
-
-    detectPlatform();
-  }, []);
-
-  // Récupérer le chemin public
   useEffect(() => {
     const getPublicPath = async () => {
       try {
         const path = await invoke<string>("get_public_folder_path");
-        const normalizedPath = path.replace(/\\/g, "/").replace(/\/$/, "");
+        const normalizedPath = path.replace(/\/$/, "");
         setPublicPath(normalizedPath);
-        addLog(`Chemin public obtenu: ${normalizedPath}`);
       } catch (error) {
-        addLog(`Erreur chemin public: ${error}`);
+        console.error("Erreur chemin public:", error);
       }
     };
 
     getPublicPath();
-  }, [isWindows]);
+  }, []);
 
   const loadConfig = useCallback(async () => {
     if (!publicPath) {
@@ -81,39 +52,27 @@ const Home: React.FC = () => {
 
     try {
       const filePath = `${publicPath}/config.json`;
-      const encodedPath = isWindows
-        ? encodeURI(filePath).replace(/#/g, "%23")
-        : filePath;
-      const configUrl = convertFileSrc(encodedPath);
+      const configUrl = convertFileSrc(filePath);
 
-      addLog(`Chargement config depuis: ${configUrl}`);
       const response = await fetch(configUrl);
 
       if (!response.ok) {
         const errorMsg = `Erreur HTTP ${response.status}: ${response.statusText}`;
-        setConfigError(errorMsg);
-        addLog(`Erreur config: ${errorMsg}`);
         throw new Error(errorMsg);
       }
 
       const data = await response.json();
-      addLog("Configuration chargée avec succès");
 
       if (JSON.stringify(data) === JSON.stringify(config)) {
         return;
       }
 
       setConfig(data);
-      setConfigError(null);
 
       if (data.background) {
         const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
-        const encodedBgPath = isWindows
-          ? encodeURI(bgFilePath).replace(/#/g, "%23")
-          : bgFilePath;
-        const backgroundUrl = convertFileSrc(encodedBgPath);
+        const backgroundUrl = convertFileSrc(bgFilePath);
 
-        addLog(`Arrière-plan chargé: ${data.background.file}`);
         setBackgroundStyle({
           backgroundImage: `url(${backgroundUrl})`,
           backgroundSize: "cover",
@@ -122,11 +81,8 @@ const Home: React.FC = () => {
         });
       }
     } catch (error) {
-      const errorMsg = `Erreur config: ${error}`;
-      addLog(errorMsg);
-      setConfigError(errorMsg);
     }
-  }, [publicPath, config, isWindows]);
+  }, [publicPath, config]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current !== null) {
@@ -190,15 +146,12 @@ const Home: React.FC = () => {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
         const animPath = `${publicPath}/animations/${animation.file}`;
-        const animationUrl = isWindows
-          ? convertFileSrc(encodeURI(animPath).replace(/#/g, "%23"))
-          : `file://${animPath}`;
+        const animationUrl = convertFileSrc(animPath);
 
         setSelectedAnimation({
           ...animation,
           file: animationUrl,
         });
-        addLog(`Animation chargée: ${animation.file} (${animationUrl})`);
       }
     }
   };
@@ -212,23 +165,6 @@ const Home: React.FC = () => {
     <div className={styles.container}>
       <CloseButton />
 
-      {/* Debug information */}
-      <div className={styles.debugInfo}>
-        <h3>Informations système</h3>
-        <p>Chemin public: {publicPath}</p>
-        <p>Plateforme Windows: {isWindows ? "Oui" : "Non"}</p>
-        {configError && <p className={styles.error}>Erreur: {configError}</p>}
-
-        <h3>Logs système</h3>
-        <div className={styles.logs}>
-          {logs.map((log, index) => (
-            <p key={index} className={styles.logEntry}>
-              {log}
-            </p>
-          ))}
-        </div>
-      </div>
-
       <div className={styles.backgroundImage} style={backgroundStyle}></div>
       <div className={styles.buttonsContainer}>
         {config?.animations.map((animation) => (
@@ -236,7 +172,6 @@ const Home: React.FC = () => {
             key={animation.id}
             text={animation.title}
             onClick={() => {
-              addLog(`Animation sélectionnée: ${animation.title}`);
               handleAnimationSelect(animation.id);
             }}
           />
@@ -248,10 +183,8 @@ const Home: React.FC = () => {
           animationUrl={selectedAnimation.file}
           playCount={selectedAnimation.playCount}
           onClose={() => {
-            addLog("Lecture animation terminée");
             closeAnimationPlayer();
           }}
-          isWindows={isWindows}
         />
       )}
     </div>

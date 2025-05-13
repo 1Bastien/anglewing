@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import styles from "./AnimationPlayer.module.css";
 import PlayPauseButton from "../PlayPauseButton/PlayPauseButton";
 import ReactPlayer from "react-player";
@@ -7,84 +7,162 @@ interface AnimationPlayerProps {
   animationUrl: string;
   playCount: number;
   onClose: () => void;
-  isWindows?: boolean;
 }
 
 const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   animationUrl,
   playCount,
   onClose,
-  isWindows = false,
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentPlayCount, setCurrentPlayCount] = useState(0);
-  const [hasError, setHasError] = useState(false);
-  const [errorDetails, setErrorDetails] = useState<string>("");
-  const [logs, setLogs] = useState<string[]>([]);
   const [isReady, setIsReady] = useState(false);
-  const [playerState, setPlayerState] = useState<string>("Non initialisé");
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const playerRef = useRef<ReactPlayer>(null);
+  const isDuringPlayback = useRef(false);
+  const leftButtonRef = useRef<HTMLButtonElement>(null);
+  const autoRestartTimerRef = useRef<number | null>(null);
+  const videoEndedTimeRef = useRef<number | null>(null);
+  const maxRetries = 3;
+  const [retryCount, setRetryCount] = useState(0);
 
-  const addLog = (message: string) => {
-    setLogs((prev) => [
-      ...prev.slice(-4),
-      `${new Date().toISOString().split("T")[1]} - ${message}`,
-    ]);
-  };
+  useEffect(() => {
+    const fetchVideo = async () => {
+      try {
+        setIsLoading(true);
+        
+        const response = await fetch(animationUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        
+        setBlobUrl(url);
+        setIsLoading(false);
+      } catch (error) {
+        setIsLoading(false);
+      }
+    };
 
-  // L'URL est déjà traitée par convertFileSrc dans Home.tsx
-  const processedAnimationUrl = animationUrl;
+    fetchVideo();
+
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+      if (autoRestartTimerRef.current) {
+        clearTimeout(autoRestartTimerRef.current);
+      }
+    };
+  }, [animationUrl]);
+
+  const forceButtonClick = useCallback(() => {
+    if (leftButtonRef.current) {
+      leftButtonRef.current.click();
+      return true;
+    }
+    return false;
+  }, []);
+
+  const simulatePlayButtonClick = useCallback(() => {
+    setIsPlaying(false);
+    setTimeout(() => {
+      setIsPlaying(true);
+    }, 50);
+  }, []);
+
+  const restartPlayback = useCallback(() => {
+    if (playerRef.current) {
+      playerRef.current.seekTo(0);
+      
+      simulatePlayButtonClick();
+      
+      forceButtonClick();
+      
+      setRetryCount(prev => prev + 1);
+      return true;
+    }
+    return false;
+  }, [simulatePlayButtonClick, forceButtonClick]);
+
+  useEffect(() => {
+    if (isReady && isPlaying && !isLoading && blobUrl) {
+      const checkInterval = setInterval(() => {
+        if (isPlaying && !isDuringPlayback.current && retryCount < maxRetries) {
+          restartPlayback();
+        }
+      }, 1000);
+      
+      return () => clearInterval(checkInterval);
+    }
+  }, [isReady, isPlaying, isLoading, blobUrl, restartPlayback, retryCount]);
 
   const handleVideoEnded = useCallback(() => {
-    if (currentPlayCount < playCount - 1) {
-      setCurrentPlayCount((prev) => prev + 1);
-      addLog(`Lecture ${currentPlayCount + 2}/${playCount}`);
-      setIsPlaying(true);
+    videoEndedTimeRef.current = Date.now();
+    isDuringPlayback.current = false;
+    
+    if (autoRestartTimerRef.current) {
+      clearTimeout(autoRestartTimerRef.current);
+    }
+    
+    const nextPlayCount = currentPlayCount + 1;
+    
+    if (nextPlayCount < playCount) {
+      setCurrentPlayCount(nextPlayCount);
+      setRetryCount(0);
+      
+      autoRestartTimerRef.current = window.setTimeout(() => {
+        if (!restartPlayback()) {
+          if (!forceButtonClick()) {
+            simulatePlayButtonClick();
+          }
+        }
+      }, 300);
+      
+      setTimeout(() => {
+        if (!isDuringPlayback.current && nextPlayCount === currentPlayCount) {
+          restartPlayback();
+        }
+      }, 1000);
     } else {
-      addLog("Lecture terminée");
       onClose();
     }
-  }, [currentPlayCount, playCount, onClose]);
+  }, [currentPlayCount, playCount, onClose, restartPlayback, forceButtonClick, simulatePlayButtonClick]);
 
-  const handleError = (error: any) => {
-    let errorMessage = "Erreur inconnue";
+  const handleError = () => {
 
-    // Détails de l'erreur
-    if (error) {
-      if (typeof error === "string") {
-        errorMessage = error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      } else {
-        try {
-          errorMessage = JSON.stringify(error);
-        } catch {
-          errorMessage = "Erreur non sérialisable";
-        }
-      }
-    }
-
-    // Ajouter des informations sur l'état du lecteur
-    const errorDetails = `
-      Erreur de lecture: ${errorMessage}
-      État du lecteur: ${isReady ? "Prêt" : "Non prêt"}
-      État de lecture: ${isPlaying ? "En lecture" : "En pause"}
-      État du player: ${playerState}
-      Compteur: ${currentPlayCount + 1}/${playCount}
-      URL: ${processedAnimationUrl}
-    `.trim();
-
-    addLog(`Erreur détectée: ${errorMessage}`);
-    setHasError(true);
-    setErrorDetails(errorDetails);
   };
 
   const togglePlayPause = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (isReady) {
-      setIsPlaying(!isPlaying);
-      addLog(isPlaying ? "Lecture en pause" : "Lecture reprise");
-    } else {
-      addLog("Lecteur pas encore prêt");
+      const newPlayingState = !isPlaying;
+      setIsPlaying(newPlayingState);
+      isDuringPlayback.current = newPlayingState;
+    }
+  };
+
+  const handlePlay = () => {
+    isDuringPlayback.current = true;
+  };
+
+  const handlePause = () => {
+    isDuringPlayback.current = false;
+  };
+
+  const handleReady = () => {
+    setIsReady(true);
+    
+    setIsPlaying(true);
+    isDuringPlayback.current = true;
+  };
+
+  const handleProgress = (state: { played: number }) => {
+    if (state.played > 0) {
+      isDuringPlayback.current = true;
     }
   };
 
@@ -92,76 +170,39 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
     <div
       className={styles.playerContainer}
       onClick={() => togglePlayPause({} as React.MouseEvent<HTMLButtonElement>)}
+      style={{ backgroundColor: 'rgb(0, 0, 0)' }}
     >
-      <div className={styles.debugInfo}>
-        <h3>Informations lecture</h3>
-        <p>État: {isPlaying ? "En lecture" : "En pause"}</p>
-        <p>
-          Lecture: {currentPlayCount + 1}/{playCount}
-        </p>
-        <p>Plateforme: {isWindows ? "Windows" : "Unix"}</p>
-        <p>URL vidéo: {processedAnimationUrl}</p>
-        <p>Lecteur prêt: {isReady ? "Oui" : "Non"}</p>
-        <p>État du player: {playerState}</p>
-
-        <h3>Logs lecture</h3>
-        <div className={styles.logs}>
-          {logs.map((log, index) => (
-            <p key={index} className={styles.logEntry}>
-              {log}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      {hasError ? (
-        <div className={styles.errorMessage}>
-          <p>Erreur lors du chargement de la vidéo</p>
-          <p style={{ whiteSpace: "pre-line" }}>Détails: {errorDetails}</p>
-          <p>URL utilisée: {processedAnimationUrl}</p>
-          <p>Plateforme: {isWindows ? "Windows" : "Unix"}</p>
-        </div>
-      ) : null}
 
       <div className={styles.videoWrapper}>
-        <ReactPlayer
-          url={processedAnimationUrl}
-          playing={isPlaying}
-          controls={false}
-          width="100%"
-          height="100%"
-          onEnded={handleVideoEnded}
-          onError={handleError}
-          onBuffer={() => {
-            setPlayerState("Mise en mémoire tampon");
-            addLog("Mise en mémoire tampon...");
-          }}
-          onBufferEnd={() => {
-            setPlayerState("Tampon prêt");
-            addLog("Lecture prête");
-          }}
-          onReady={() => {
-            setIsReady(true);
-            setPlayerState("Prêt");
-            addLog("Lecteur prêt");
-          }}
-          onStart={() => {
-            setPlayerState("En lecture");
-            addLog("Lecture démarrée");
-          }}
-          onPause={() => {
-            setPlayerState("En pause");
-            addLog("Lecture en pause");
-          }}
-          onPlay={() => {
-            setPlayerState("En lecture");
-            addLog("Lecture en cours");
-          }}
-        />
+        {blobUrl && !isLoading && (
+          <ReactPlayer
+            ref={playerRef}
+            url={blobUrl}
+            playing={isPlaying}
+            controls={false}
+            width="100%"
+            height="100%"
+            style={{ backgroundColor: 'black' }}
+            onEnded={handleVideoEnded}
+            onError={handleError}
+            onProgress={handleProgress}
+            onBuffer={() => {
+            }}
+            onBufferEnd={() => {
+            }}
+            onReady={handleReady}
+            onStart={() => {
+              isDuringPlayback.current = true;
+            }}
+            onPause={handlePause}
+            onPlay={handlePlay}
+          />
+        )}
       </div>
 
       <div className={styles.controlsContainer}>
         <PlayPauseButton
+          ref={leftButtonRef}
           isPlaying={isPlaying}
           onClick={togglePlayPause}
           className={styles.leftButton}
