@@ -1,7 +1,10 @@
 use std::fs;
 use std::path::Path;
-use std::os::unix::fs::PermissionsExt;
 use dirs;
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 use tauri::Manager;
 
 #[allow(dead_code)]
@@ -54,12 +57,15 @@ pub fn check_and_setup_installation(app_handle: &tauri::AppHandle) -> Result<(),
           .map_err(|e| format!("Failed to copy file {:?} to {:?}: {}", path, target, e))?;
       }
       
-      // Set permissions to 755 for directories and 644 for files
-      let mode = if path.is_dir() { 0o755 } else { 0o644 };
-      fs::set_permissions(
-        &target,
-        fs::Permissions::from_mode(mode)
-      ).map_err(|e| format!("Failed to set permissions for {:?}: {}", target, e))?;
+      #[cfg(unix)]
+      {
+        // Set permissions to 755 for directories and 644 for files on Unix systems
+        let mode = if path.is_dir() { 0o755 } else { 0o644 };
+        fs::set_permissions(
+          &target,
+          fs::Permissions::from_mode(mode)
+        ).map_err(|e| format!("Failed to set permissions for {:?}: {}", target, e))?;
+      }
     }
     Ok(())
   }
@@ -92,19 +98,25 @@ pub fn get_public_folder_path(_app_dir_: &Path) -> std::path::PathBuf {
         if let Err(e) = fs::create_dir_all(dir) {
           log::error!("Failed to create directory {:?}: {}", dir, e);
         } else {
-          // Set directory permissions to 755 (rwxr-xr-x)
-          if let Err(e) = fs::set_permissions(dir, fs::Permissions::from_mode(0o755)) {
-            log::error!("Failed to set permissions for {:?}: {}", dir, e);
+          #[cfg(unix)]
+          {
+            // Set directory permissions to 755 on Unix systems
+            if let Err(e) = fs::set_permissions(dir, fs::Permissions::from_mode(0o755)) {
+              log::error!("Failed to set permissions for {:?}: {}", dir, e);
+            }
           }
-          log::info!("Successfully created directory with permissions: {:?}", dir);
+          log::info!("Successfully created directory: {:?}", dir);
         }
       }
     }
   } else {
     log::info!("Public directory already exists at {:?}", lib_path);
-    // Log current permissions
-    if let Ok(metadata) = fs::metadata(&lib_path) {
-      log::info!("Current permissions: {:o}", metadata.permissions().mode());
+    #[cfg(unix)]
+    {
+      // Log current permissions on Unix systems
+      if let Ok(metadata) = fs::metadata(&lib_path) {
+        log::info!("Current permissions: {:o}", metadata.permissions().mode());
+      }
     }
   }
   
