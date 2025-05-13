@@ -133,7 +133,6 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   }, [currentPlayCount, playCount, onClose, restartPlayback, forceButtonClick, simulatePlayButtonClick]);
 
   const handleError = () => {
-
   };
 
   const togglePlayPause = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -186,10 +185,8 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
             onEnded={handleVideoEnded}
             onError={handleError}
             onProgress={handleProgress}
-            onBuffer={() => {
-            }}
-            onBufferEnd={() => {
-            }}
+            onBuffer={() => {}}
+            onBufferEnd={() => {}}
             onReady={handleReady}
             onStart={() => {
               isDuringPlayback.current = true;

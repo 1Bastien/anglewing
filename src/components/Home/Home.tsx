@@ -38,7 +38,6 @@ const Home: React.FC = () => {
         const normalizedPath = path.replace(/\/$/, "");
         setPublicPath(normalizedPath);
       } catch (error) {
-        console.error("Erreur chemin public:", error);
       }
     };
 
@@ -89,16 +88,13 @@ const Home: React.FC = () => {
       window.clearTimeout(inactivityTimerRef.current);
     }
 
-    invoke("reset_inactivity_timer").catch((err: Error) => {
-      console.error("Failed to reset inactivity timer:", err);
-    });
+    invoke("reset_inactivity_timer").catch(() => {});
 
     inactivityTimerRef.current = window.setTimeout(async () => {
       if (!selectedAnimation) {
         try {
           await invoke("put_system_to_sleep");
         } catch (error) {
-          console.error("Failed to put system to sleep:", error);
         }
       }
     }, (config?.inactivity_timeout_in_minutes || 10) * 60 * 1000);
