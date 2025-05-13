@@ -21,13 +21,14 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   const [hasError, setHasError] = useState(false);
   const [errorDetails, setErrorDetails] = useState<string>("");
   const [logs, setLogs] = useState<string[]>([]);
+  const [isReady, setIsReady] = useState(false);
 
   const addLog = (message: string) => {
     setLogs((prev) => [...prev.slice(-4), message]);
   };
 
   // L'URL est déjà traitée par convertFileSrc dans Home.tsx
-  const processedAnimationUrl = animationUrl.replace(/%2F/g, "/");
+  const processedAnimationUrl = animationUrl;
 
   const handleVideoEnded = useCallback(() => {
     if (currentPlayCount < playCount - 1) {
@@ -51,8 +52,10 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
 
   const togglePlayPause = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    setIsPlaying(!isPlaying);
-    addLog(isPlaying ? "Lecture en pause" : "Lecture reprise");
+    if (isReady) {
+      setIsPlaying(!isPlaying);
+      addLog(isPlaying ? "Lecture en pause" : "Lecture reprise");
+    }
   };
 
   return (
@@ -68,6 +71,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         </p>
         <p>Plateforme: {isWindows ? "Windows" : "Unix"}</p>
         <p>URL vidéo: {processedAnimationUrl}</p>
+        <p>Lecteur prêt: {isReady ? "Oui" : "Non"}</p>
 
         <h3>Logs lecture</h3>
         <div className={styles.logs}>
@@ -99,13 +103,18 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
           onError={handleError}
           onBuffer={() => addLog("Mise en mémoire tampon...")}
           onBufferEnd={() => addLog("Lecture prête")}
-          onReady={() => addLog("Lecteur prêt")}
+          onReady={() => {
+            setIsReady(true);
+            addLog("Lecteur prêt");
+          }}
           onStart={() => addLog("Lecture démarrée")}
           config={{
             file: {
               attributes: {
                 playsInline: true,
+                controlsList: "nodownload",
               },
+              forceVideo: true,
             },
           }}
         />
