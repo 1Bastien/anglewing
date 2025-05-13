@@ -37,12 +37,12 @@
 
 .controlsContainer {
     position: absolute;
-    bottom: 50px;
+    bottom: 80px;
     left: 0;
     width: 100%;
     display: flex;
     justify-content: space-between;
-    padding: 0 50px;
+    padding: 0 80px;
     z-index: 1001;
 }
 
