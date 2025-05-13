@@ -9,6 +9,10 @@ interface AnimationPlayerProps {
   isWindows?: boolean;
 }
 
+// Détection de la plateforme une seule fois en dehors du composant
+const userAgent = navigator.userAgent.toLowerCase();
+const isLinuxPlatform = userAgent.includes("linux");
+
 const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   animationUrl,
   playCount,
@@ -23,12 +27,14 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const addLog = (message: string) => {
-    setLogs((prev) => [...prev.slice(-4), message]); // Garde les 5 derniers logs
+    setLogs((prev) => [...prev.slice(-4), message]);
   };
 
   // Préparer l'URL de la vidéo en fonction de la plateforme
   const processedAnimationUrl = isWindows
     ? animationUrl
+    : isLinuxPlatform
+    ? `file://${animationUrl}`
     : animationUrl.replace(/%2F/g, "/");
 
   const handleVideoEnded = useCallback(() => {
@@ -37,7 +43,11 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
       addLog(`Lecture ${currentPlayCount + 2}/${playCount}`);
       if (videoRef.current) {
         videoRef.current.currentTime = 0;
-        videoRef.current.play();
+        videoRef.current.play().catch((error) => {
+          addLog(`Erreur lors de la reprise de la lecture: ${error}`);
+          setHasError(true);
+          setErrorDetails(error.toString());
+        });
       }
     } else {
       addLog("Lecture terminée");
@@ -70,6 +80,8 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
           readyState: video.readyState,
           networkState: video.networkState,
           error: video.error,
+          platform: isLinuxPlatform ? "Linux" : isWindows ? "Windows" : "macOS",
+          processedUrl: processedAnimationUrl,
         });
 
         addLog(detailedError);
@@ -77,34 +89,38 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         setErrorDetails(detailedError);
       });
 
-      video.addEventListener("loadstart", () => {
-        addLog(`Chargement vidéo démarré: ${processedAnimationUrl}`);
+      const events = ["loadstart", "canplay", "loadedmetadata", "stalled"];
+      const eventHandlers = {
+        loadstart: () =>
+          addLog(`Chargement vidéo démarré: ${processedAnimationUrl}`),
+        canplay: () =>
+          addLog(`Vidéo prête à être lue: ${processedAnimationUrl}`),
+        loadedmetadata: () => addLog("Métadonnées chargées"),
+        stalled: () => addLog("Lecture bloquée"),
+      };
+
+      events.forEach((event) => {
+        video.addEventListener(
+          event,
+          eventHandlers[event as keyof typeof eventHandlers]
+        );
       });
 
-      video.addEventListener("canplay", () => {
-        addLog(`Vidéo prête à être lue: ${processedAnimationUrl}`);
-      });
-
-      // Add more event listeners for debugging
-      video.addEventListener("loadedmetadata", () => {
-        addLog("Métadonnées chargées");
-      });
-
-      video.addEventListener("stalled", () => {
-        addLog("Lecture bloquée");
-      });
-    }
-
-    return () => {
-      if (video) {
-        video.removeEventListener("ended", handleVideoEnded);
-        video.removeEventListener("error", () => {});
-        video.removeEventListener("loadstart", () => {});
-        video.removeEventListener("canplay", () => {});
-        video.removeEventListener("loadedmetadata", () => {});
-        video.removeEventListener("stalled", () => {});
+      // Force le rechargement de la vidéo si on est sur Linux
+      if (isLinuxPlatform) {
+        video.load();
       }
-    };
+
+      return () => {
+        video.removeEventListener("ended", handleVideoEnded);
+        events.forEach((event) => {
+          video.removeEventListener(
+            event,
+            eventHandlers[event as keyof typeof eventHandlers]
+          );
+        });
+      };
+    }
   }, [handleVideoEnded, processedAnimationUrl]);
 
   const togglePlayPause = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -114,7 +130,11 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         videoRef.current.pause();
         addLog("Lecture en pause");
       } else {
-        videoRef.current.play();
+        videoRef.current.play().catch((error) => {
+          addLog(`Erreur lors de la reprise: ${error}`);
+          setHasError(true);
+          setErrorDetails(error.toString());
+        });
         addLog("Lecture reprise");
       }
       setIsPlaying(!isPlaying);
@@ -131,6 +151,10 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         <p>État: {isPlaying ? "En lecture" : "En pause"}</p>
         <p>
           Lecture: {currentPlayCount + 1}/{playCount}
+        </p>
+        <p>
+          Plateforme:{" "}
+          {isLinuxPlatform ? "Linux" : isWindows ? "Windows" : "macOS"}
         </p>
         <p>URL vidéo: {processedAnimationUrl}</p>
 
@@ -149,6 +173,10 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
           <p>Erreur lors du chargement de la vidéo</p>
           <p>Détails: {errorDetails}</p>
           <p>URL utilisée: {processedAnimationUrl}</p>
+          <p>
+            Plateforme:{" "}
+            {isLinuxPlatform ? "Linux" : isWindows ? "Windows" : "macOS"}
+          </p>
         </div>
       ) : null}
 
@@ -157,6 +185,7 @@ const AnimationPlayer: React.FC<AnimationPlayerProps> = ({
         src={processedAnimationUrl}
         className={styles.videoPlayer}
         autoPlay
+        playsInline
         onError={(e) => {
           const video = e.currentTarget;
           const errorMsg = `Erreur vidéo: Code ${video.error?.code}, ${video.error?.message}`;

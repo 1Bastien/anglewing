@@ -32,7 +32,8 @@
             "C:/Program Files (x86)/Anglewing/public/**",
             "/usr/lib/Anglewing/_up_/public/**",
             "~/.anglewing/public/**",
-            "$HOME/.anglewing/public/**"
+            "$HOME/.anglewing/public/**",
+            "file://**"
           ]
         }
       }
