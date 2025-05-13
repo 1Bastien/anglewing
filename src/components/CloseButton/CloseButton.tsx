@@ -1,24 +1,21 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "./CloseButton.module.css";
-import { exit } from "@tauri-apps/plugin-process";
+import ActionModal from "../ActionModal/ActionModal";
 
 const CloseButton: React.FC = () => {
-  const handleClose = async () => {
-    try {
-      await exit(0);
-    } catch (error) {
-      console.error("Failed to close application:", error);
-    }
-  };
+  const [showModal, setShowModal] = useState(false);
 
   return (
-    <button
-      className={styles.closeButton}
-      onClick={handleClose}
-      aria-label="Close application"
-    >
-      <span className={styles.hidden}>Close</span>
-    </button>
+    <>
+      <button
+        className={styles.closeButton}
+        onClick={() => setShowModal(true)}
+        aria-label="Close application"
+      >
+        <span className={styles.hidden}>Close</span>
+      </button>
+      {showModal && <ActionModal onClose={() => setShowModal(false)} />}
+    </>
   );
 };
 

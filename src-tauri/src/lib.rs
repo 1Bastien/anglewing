@@ -16,7 +16,8 @@ pub fn run() {
       close_application, 
       put_system_to_sleep, 
       reset_inactivity_timer,
-      get_public_folder_path
+      get_public_folder_path,
+      shutdown_system
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
@@ -110,5 +111,30 @@ async fn put_system_to_sleep() -> Result<(), String> {
 
 #[tauri::command]
 async fn reset_inactivity_timer() -> Result<(), String> {
+  Ok(())
+}
+
+#[tauri::command]
+async fn shutdown_system() -> Result<(), String> {
+  use std::process::Command;
+  
+  #[cfg(target_os = "linux")]
+  {
+    // Essayer d'abord avec systemctl
+    let result = Command::new("systemctl")
+      .arg("poweroff")
+      .status()
+      .map_err(|e| e.to_string())?;
+
+    if !result.success() {
+      // Si systemctl échoue, essayer avec la commande shutdown traditionnelle
+      Command::new("shutdown")
+        .arg("-h")
+        .arg("now")
+        .status()
+        .map_err(|e| e.to_string())?;
+    }
+  }
+
   Ok(())
 } 
