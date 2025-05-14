@@ -28,7 +28,6 @@ const Home: React.FC = () => {
   const [backgroundStyle, setBackgroundStyle] = useState({});
   const [selectedAnimation, setSelectedAnimation] = useState<AnimationConfig | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
-  const [publicPath, setPublicPath] = useState<string | null>(null);
   const inactivityTimerRef = useRef<number | null>(null);
 
   // Commented out dynamic path retrieval
