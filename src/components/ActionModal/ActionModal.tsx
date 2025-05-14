@@ -1,10 +1,26 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import styles from "./ActionModal.module.css";
 import { exit } from "@tauri-apps/plugin-process";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 
 interface ActionModalProps {
   onClose: () => void;
+}
+
+interface Config {
+  inactivity_timeout_in_minutes: number;
+  background: {
+    file: string;
+  };
+  security: {
+    pin: string;
+  };
+  animations: Array<{
+    id: number;
+    title: string;
+    file: string;
+    playCount: number;
+  }>;
 }
 
 const ActionModal: React.FC<ActionModalProps> = ({ onClose }) => {
@@ -12,14 +28,52 @@ const ActionModal: React.FC<ActionModalProps> = ({ onClose }) => {
   const [pin, setPin] = useState("");
   const [selectedAction, setSelectedAction] = useState<"close" | "shutdown" | null>(null);
   const [error, setError] = useState("");
+  const [config, setConfig] = useState<Config | null>(null);
+  const [publicPath, setPublicPath] = useState<string | null>(null);
 
-  const correctPin = "1234";
+  useEffect(() => {
+    const getPublicPath = async () => {
+      try {
+        const path = await invoke<string>("get_public_folder_path");
+        const normalizedPath = path.replace(/\/$/, "");
+        setPublicPath(normalizedPath);
+      } catch (error) {
+        console.error("Failed to get public path:", error);
+      }
+    };
+
+    getPublicPath();
+  }, []);
+
+  const loadConfig = useCallback(async () => {
+    if (!publicPath) {
+      return;
+    }
+
+    try {
+      const filePath = `${publicPath}/config.json`;
+      const configUrl = convertFileSrc(filePath);
+      const response = await fetch(configUrl);
+
+      if (!response.ok) {
+        const errorMsg = `Erreur HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      setConfig(data);
+    } catch (error) {
+      console.error("Failed to load config:", error);
+    }
+  }, [publicPath]);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
 
   const handleShutdown = async () => {
     try {
-      // Lancer la commande d'extinction d'abord
       await invoke('shutdown_system');
-      // Puis fermer l'application
       setTimeout(() => {
         exit(0);
       }, 1000);
@@ -30,7 +84,12 @@ const ActionModal: React.FC<ActionModalProps> = ({ onClose }) => {
   };
 
   const handlePinSubmit = async () => {
-    if (pin === correctPin) {
+    if (!config || !config.security || !config.security.pin) {
+      setError("Configuration non chargée ou invalide");
+      return;
+    }
+
+    if (pin === config.security.pin) {
       if (selectedAction === "close") {
         try {
           await exit(0);

@@ -3,6 +3,9 @@
   "background": {
     "file": "background.png"
   },
+  "security": {
+    "pin": "1234"
+  },
   "animations": [
     {
       "id": 1,
