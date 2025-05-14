@@ -14,7 +14,7 @@ pub fn run() {
     })
     .invoke_handler(tauri::generate_handler![
       close_application, 
-      put_system_to_sleep, 
+      //put_system_to_sleep, 
       reset_inactivity_timer,
       get_public_folder_path,
       shutdown_system
@@ -70,44 +70,44 @@ fn get_public_folder_path() -> Result<String, String> {
   Ok(public_path.to_string_lossy().to_string())
 }
 
-#[tauri::command]
-async fn put_system_to_sleep() -> Result<(), String> {
-  #[cfg(target_os = "macos")]
-  {
-    match std::process::Command::new("pmset")
-      .args(["sleepnow"])
-      .status()
-    {
-      Ok(_) => Ok(()),
-      Err(e) => Err(format!("Failed to put macOS to sleep: {}", e)),
-    }
-  }
+// #[tauri::command]
+// async fn put_system_to_sleep() -> Result<(), String> {
+//   #[cfg(target_os = "macos")]
+//   {
+//     match std::process::Command::new("pmset")
+//       .args(["sleepnow"])
+//       .status()
+//     {
+//       Ok(_) => Ok(()),
+//       Err(e) => Err(format!("Failed to put macOS to sleep: {}", e)),
+//     }
+//   }
 
-  #[cfg(target_os = "linux")]
-  {
-    let systemd_result = std::process::Command::new("systemctl")
-      .args(["suspend"])
-      .status();
+//   #[cfg(target_os = "linux")]
+//   {
+//     let systemd_result = std::process::Command::new("systemctl")
+//       .args(["suspend"])
+//       .status();
     
-    if systemd_result.is_err() {
-      match std::process::Command::new("dbus-send")
-        .args(["--system", "--print-reply", "--dest=org.freedesktop.login1", 
-              "/org/freedesktop/login1", "org.freedesktop.login1.Manager.Suspend", "boolean:true"])
-        .status()
-      {
-        Ok(_) => Ok(()),
-        Err(e) => Err(format!("Failed to put Linux to sleep: {}", e)),
-      }
-    } else {
-      Ok(())
-    }
-  }
+//     if systemd_result.is_err() {
+//       match std::process::Command::new("dbus-send")
+//         .args(["--system", "--print-reply", "--dest=org.freedesktop.login1", 
+//               "/org/freedesktop/login1", "org.freedesktop.login1.Manager.Suspend", "boolean:true"])
+//         .status()
+//       {
+//         Ok(_) => Ok(()),
+//         Err(e) => Err(format!("Failed to put Linux to sleep: {}", e)),
+//       }
+//     } else {
+//       Ok(())
+//     }
+//   }
 
-  #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-  {
-    Err("System sleep not supported on this platform".to_string())
-  }
-}
+//   #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+//   {
+//     Err("System sleep not supported on this platform".to_string())
+//   }
+// }
 
 #[tauri::command]
 async fn reset_inactivity_timer() -> Result<(), String> {
