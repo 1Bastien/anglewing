@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import styles from "./ActionModal.module.css";
 import { exit } from "@tauri-apps/plugin-process";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 
 interface ActionModalProps {
   onClose: () => void;
@@ -29,31 +29,10 @@ const ActionModal: React.FC<ActionModalProps> = ({ onClose }) => {
   const [selectedAction, setSelectedAction] = useState<"close" | "shutdown" | null>(null);
   const [error, setError] = useState("");
   const [config, setConfig] = useState<Config | null>(null);
-  const [publicPath, setPublicPath] = useState<string | null>(null);
-
-  useEffect(() => {
-    const getPublicPath = async () => {
-      try {
-        const path = await invoke<string>("get_public_folder_path");
-        const normalizedPath = path.replace(/\/$/, "");
-        setPublicPath(normalizedPath);
-      } catch (error) {
-        console.error("Failed to get public path:", error);
-      }
-    };
-
-    getPublicPath();
-  }, []);
 
   const loadConfig = useCallback(async () => {
-    if (!publicPath) {
-      return;
-    }
-
     try {
-      const filePath = `${publicPath}/config.json`;
-      const configUrl = convertFileSrc(filePath);
-      const response = await fetch(configUrl);
+      const response = await fetch('../public/config.json');
 
       if (!response.ok) {
         const errorMsg = `Erreur HTTP ${response.status}: ${response.statusText}`;
@@ -65,7 +44,7 @@ const ActionModal: React.FC<ActionModalProps> = ({ onClose }) => {
     } catch (error) {
       console.error("Failed to load config:", error);
     }
-  }, [publicPath]);
+  }, []);
 
   useEffect(() => {
     loadConfig();

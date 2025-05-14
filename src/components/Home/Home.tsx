@@ -3,7 +3,7 @@ import styles from "./Home.module.css";
 import Button from "../Button/Button";
 import CloseButton from "../CloseButton/CloseButton";
 import AnimationPlayer from "../AnimationPlayer/AnimationPlayer";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 
 interface AnimationConfig {
   id: number;
@@ -31,57 +31,35 @@ const Home: React.FC = () => {
   const [publicPath, setPublicPath] = useState<string | null>(null);
   const inactivityTimerRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    const getPublicPath = async () => {
-      try {
-        const path = await invoke<string>("get_public_folder_path");
-        const normalizedPath = path.replace(/\/$/, "");
-        setPublicPath(normalizedPath);
-      } catch (error) {
-      }
-    };
-
-    getPublicPath();
-  }, []);
+  // Commented out dynamic path retrieval
+  // const getPublicPath = async () => { ... }
 
   const loadConfig = useCallback(async () => {
-    if (!publicPath) {
+    const response = await fetch('../public/config.json');
+
+    if (!response.ok) {
+      const errorMsg = `Erreur HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+
+    if (JSON.stringify(data) === JSON.stringify(config)) {
       return;
     }
 
-    try {
-      const filePath = `${publicPath}/config.json`;
-      const configUrl = convertFileSrc(filePath);
+    setConfig(data);
 
-      const response = await fetch(configUrl);
-
-      if (!response.ok) {
-        const errorMsg = `Erreur HTTP ${response.status}: ${response.statusText}`;
-        throw new Error(errorMsg);
-      }
-
-      const data = await response.json();
-
-      if (JSON.stringify(data) === JSON.stringify(config)) {
-        return;
-      }
-
-      setConfig(data);
-
-      if (data.background) {
-        const bgFilePath = `${publicPath}/backgrounds/${data.background.file}`;
-        const backgroundUrl = convertFileSrc(bgFilePath);
-
-        setBackgroundStyle({
-          backgroundImage: `url(${backgroundUrl})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        });
-      }
-    } catch (error) {
+    if (data.background) {
+      const bgFilePath = `../public/backgrounds/${data.background.file}`;
+      setBackgroundStyle({
+        backgroundImage: `url(${bgFilePath})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      });
     }
-  }, [publicPath, config]);
+  }, [config]);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current !== null) {
@@ -141,12 +119,10 @@ const Home: React.FC = () => {
     if (config) {
       const animation = config.animations.find((a) => a.id === animationId);
       if (animation) {
-        const animPath = `${publicPath}/animations/${animation.file}`;
-        const animationUrl = convertFileSrc(animPath);
-
+        const animPath = `../public/animations/${animation.file}`;
         setSelectedAnimation({
           ...animation,
-          file: animationUrl,
+          file: animPath,
         });
       }
     }
